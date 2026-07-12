@@ -1,6 +1,7 @@
 use axum::Router;
 
 use crate::bootstrap::state::AppState;
+use crate::modules::audit::presentation::routes as audit_routes;
 use crate::modules::auth::presentation::routes as auth_routes;
 use crate::modules::permission::presentation::routes as permission_routes;
 use crate::modules::role::presentation::routes as role_routes;
@@ -12,4 +13,5 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(user_routes::routes(state.clone()))
         .merge(role_routes::routes(state.clone()))
         .merge(permission_routes::routes(state.clone()))
+        .merge(audit_routes::routes(state.clone()))
 }

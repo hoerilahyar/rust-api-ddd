@@ -5,6 +5,8 @@ use redis::aio::ConnectionManager;
 use sqlx::PgPool;
 
 use crate::bootstrap::config::AppConfig;
+use crate::modules::audit::application::{AuditLogService, AuditLogServiceImpl};
+use crate::modules::audit::infrastructure::persistence::AuditLogRepositoryPg;
 use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
@@ -32,6 +34,7 @@ pub struct AppState {
     pub auth_service: Arc<dyn AuthService>,
     pub role_service: Arc<dyn RoleService>,
     pub permission_service: Arc<dyn PermissionService>,
+    pub audit_log_service: Arc<dyn AuditLogService>,
 }
 
 impl AppState {
@@ -49,6 +52,8 @@ impl AppState {
         let role_repo: Arc<RoleRepositoryPg> = Arc::new(RoleRepositoryPg::new(db.clone()));
         let permission_repo: Arc<PermissionRepositoryPg> =
             Arc::new(PermissionRepositoryPg::new(db.clone()));
+        let audit_log_repo: Arc<AuditLogRepositoryPg> =
+            Arc::new(AuditLogRepositoryPg::new(db.clone()));
 
         let user_service: Arc<dyn UserService> =
             Arc::new(UserServiceImpl::new(user_repo.clone(), cache.clone()));
@@ -68,6 +73,9 @@ impl AppState {
             cache.clone(),
         ));
 
+        let audit_log_service: Arc<dyn AuditLogService> =
+            Arc::new(AuditLogServiceImpl::new(audit_log_repo));
+
         Self {
             started_at: Utc::now(),
             config,
@@ -78,6 +86,7 @@ impl AppState {
             auth_service,
             role_service,
             permission_service,
+            audit_log_service,
         }
     }
 }
