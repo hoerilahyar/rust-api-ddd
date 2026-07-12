@@ -1,7 +1,8 @@
 //! Small dev utility: prints an Argon2 hash for a password so you can seed
-//! //! or reset the admin user without spinning up the whole server.
-//! //! //! Usage:
-//! //! cargo run --example hash_password -- "YourP@ssw0rd"
+//! or reset the admin user without spinning up the whole server.
+//!
+//! Usage:
+//! cargo run --example hash_password -- "YourP@ssw0rd"
 use argon2::password_hash::{rand_core::OsRng, PasswordHasher, SaltString};
 use argon2::Argon2;
 fn main() {

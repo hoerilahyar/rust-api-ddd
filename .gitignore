@@ -1,5 +1,20 @@
+# Build artifacts
 /target
+**/*.rs.bk
+*.pdb
+
+# Environment / secrets
 .env
+.env.*
 config/config.local.yaml
-/exampleslogs/
+
+# Local dev utilities & runtime data
+/examples
 /logs
+*.log
+
+# Editor / IDE
+.idea/
+.vscode/
+*.iml
+.DS_Store
