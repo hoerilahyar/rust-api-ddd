@@ -69,6 +69,12 @@ pub struct RateLimitConfig {
     pub max_requests: u32,
     #[serde(default = "RateLimitConfig::default_window_seconds")]
     pub window_seconds: u32,
+    /// Only trust the `X-Forwarded-For` header when the app is actually
+    /// deployed behind a reverse proxy that overwrites/strips client-sent
+    /// values. Defaults to `false` so a client can never spoof its own IP
+    /// and bypass rate limiting by rotating the header.
+    #[serde(default)]
+    pub trust_proxy: bool,
 }
 
 impl RateLimitConfig {

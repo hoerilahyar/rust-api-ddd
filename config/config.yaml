@@ -14,9 +14,14 @@ redis:
 jwt:
   access_secret: "CHANGE_ME_ACCESS_SECRET"
   refresh_secret: "CHANGE_ME_REFRESH_SECRET"
-  access_ttl_seconds: 60480
+  access_ttl_seconds: 900
   refresh_ttl_seconds: 604800
 
 rate_limit:
   max_requests: 100
   window_seconds: 60
+  # Only set this to true if the app sits behind a reverse proxy (nginx,
+  # ALB, Cloudflare, etc.) that overwrites X-Forwarded-For. Leaving it
+  # false when exposed directly to the internet prevents rate-limit
+  # bypass via a spoofed header.
+  trust_proxy: false

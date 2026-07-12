@@ -1,4 +1,5 @@
 /target
 .env
 config/config.local.yaml
-/examples
+/exampleslogs/
+/logs
