@@ -1,0 +1,22 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  log_level: "info"
+
+database:
+  url: "postgres://postgres:postgres@localhost:5432/mydb"
+  max_connections: 10
+  run_migrations_on_boot: false
+
+redis:
+  url: "redis://127.0.0.1:6379"
+
+jwt:
+  access_secret: "CHANGE_ME_ACCESS_SECRET"
+  refresh_secret: "CHANGE_ME_REFRESH_SECRET"
+  access_ttl_seconds: 60480
+  refresh_ttl_seconds: 604800
+
+rate_limit:
+  max_requests: 100
+  window_seconds: 60

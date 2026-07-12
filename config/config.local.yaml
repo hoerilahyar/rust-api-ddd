@@ -1,0 +1,10 @@
+# Local overrides -- gitignore this file in real projects and put real
+# secrets here instead of in config.yaml. Anything set here wins over
+# config.yaml. Delete keys you don't want to override.
+#
+# database:
+#   url: "postgres://postgres:postgres@localhost:5432/rust_clean_ddd_dev"
+#
+# jwt:
+#   access_secret: "dev-only-access-secret"
+#   refresh_secret: "dev-only-refresh-secret"

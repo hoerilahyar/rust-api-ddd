@@ -1,0 +1,49 @@
+2026-07-11T15:55:19.968750Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T15:55:19.970658Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T15:55:19.971814Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T15:57:13.921001Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T15:57:13.922483Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T15:57:13.923352Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T15:59:44.917974Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T15:59:44.918088Z  INFO rust_clean_ddd: migrating to postgres
+2026-07-11T15:59:45.118462Z  INFO rust_clean_ddd::bootstrap::migration: migrations applied
+2026-07-11T15:59:45.119778Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T15:59:45.120719Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:08:19.607529Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:08:19.615792Z  INFO sqlx::postgres::notice: relation "_sqlx_migrations" already exists, skipping
+2026-07-11T16:08:19.620322Z  INFO rust_clean_ddd::bootstrap::migration: migrations applied
+2026-07-11T16:08:19.621931Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:08:19.622671Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:08:42.186005Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:08:42.197081Z  INFO sqlx::postgres::notice: extension "pgcrypto" already exists, skipping
+2026-07-11T16:08:42.197185Z  INFO sqlx::postgres::notice: extension "pg_trgm" already exists, skipping
+2026-07-11T16:08:42.247749Z  INFO rust_clean_ddd::bootstrap::migration: migrations applied
+2026-07-11T16:08:42.249025Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:08:42.250009Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:11:53.304314Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:11:53.307158Z  INFO sqlx::postgres::notice: relation "_sqlx_migrations" already exists, skipping
+2026-07-11T16:11:53.310036Z  INFO rust_clean_ddd::bootstrap::migration: migrations applied
+2026-07-11T16:11:53.310591Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/001_seed_roles_and_permissions.sql
+2026-07-11T16:11:53.321402Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/002_seed_admin_user.sql
+2026-07-11T16:11:53.360725Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/003_seed_system_settings.sql
+2026-07-11T16:11:53.363340Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/004_seed_user_roles.sql
+2026-07-11T16:11:53.366511Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/005_seed_menus.sql
+2026-07-11T16:11:53.369888Z  INFO rust_clean_ddd::bootstrap::migration: applying seeder file=databases/postgresql/seeders/006_seed_menu_permissions.sql
+2026-07-11T16:11:53.374021Z  INFO rust_clean_ddd::bootstrap::migration: seeders applied
+2026-07-11T16:11:53.375150Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:11:53.376104Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:12:50.574918Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:12:50.576909Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:12:50.577933Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:28:33.989285Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:28:34.038405Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:28:34.039802Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:32:25.820071Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:32:25.825661Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:32:25.826508Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:41:54.898977Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:41:54.903304Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:41:54.904643Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080
+2026-07-11T16:45:38.117781Z  INFO rust_clean_ddd::bootstrap::database: connected to postgres
+2026-07-11T16:45:38.119400Z  INFO rust_clean_ddd::bootstrap::redis: connected to redis
+2026-07-11T16:45:38.120610Z  INFO rust_clean_ddd: server listening addr=0.0.0.0:8080

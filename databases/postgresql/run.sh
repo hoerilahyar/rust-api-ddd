@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-DATABASE_URL="postgres://postgres:postgres@localhost:5432/mydb"
+DATABASE_URL="postgres://postgres:postgres@localhost:5432/warehouse"
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
