@@ -6,13 +6,8 @@ use crate::modules::user::domain::repository::UserRepository;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`UserRepository`].
-///
-/// NOTE: this file is named `user_repository_postgres.rs` to match the module
-/// skeleton (`pub mod user_repository_postgres;` in `persistence/mod.rs`), but
-/// the actual backend is PostgreSQL -- that's what the migrations under
-/// `databases/postgresql` target. Rename the module/file to
-/// `user_repository_postgres.rs` if you want the naming to match reality.
+/// SQLx/Postgres implementation of [`UserRepository`], targeting the schema
+/// defined by the migrations under `databases/postgresql`.
 #[derive(Clone)]
 pub struct UserRepositoryPg {
     pool: PgPool,

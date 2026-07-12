@@ -8,11 +8,9 @@ use crate::modules::auth::domain::repository::AuthRepository;
 use crate::shared::contracts::{AuditRecorder, LoginAttempt};
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`AuthRepository`] + [`AuditRecorder`].
-///
-/// NOTE: kept as `auth_repository_postgres.rs` to match the existing module
-/// skeleton (`pub mod auth_repository_postgres;`); the actual backend targeted
-/// by the bundled migrations is PostgreSQL, not PostgreSQL.
+/// SQLx/Postgres implementation of [`AuthRepository`] + [`AuditRecorder`],
+/// targeting the schema defined by the migrations under
+/// `databases/postgresql`.
 #[derive(Clone)]
 pub struct AuthRepositoryPg {
     pool: PgPool,

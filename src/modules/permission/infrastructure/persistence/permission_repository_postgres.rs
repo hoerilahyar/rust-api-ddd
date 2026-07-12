@@ -5,13 +5,8 @@ use crate::modules::permission::domain::{Permission, PermissionRepository};
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`PermissionRepository`].
-///
-/// NOTE: this file is named `permission_repository_postgres.rs` to match the module
-/// skeleton (`pub mod permission_repository_postgres;` in `persistence/mod.rs`), but
-/// the actual backend is PostgreSQL -- that's what the migrations under
-/// `databases/postgresql` target. Rename the module/file to
-/// `permission_repository_postgres.rs` if you want the naming to match reality.
+/// SQLx/Postgres implementation of [`PermissionRepository`], targeting the
+/// schema defined by the migrations under `databases/postgresql`.
 #[derive(Clone)]
 pub struct PermissionRepositoryPg {
     pool: PgPool,

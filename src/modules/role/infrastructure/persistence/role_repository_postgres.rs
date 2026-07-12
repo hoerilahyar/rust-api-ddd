@@ -5,13 +5,8 @@ use crate::modules::role::domain::{Role, RoleRepository};
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`RoleRepository`].
-///
-/// NOTE: this file is named `role_repository_postgres.rs` to match the module
-/// skeleton (`pub mod role_repository_postgres;` in `persistence/mod.rs`), but
-/// the actual backend is PostgreSQL -- that's what the migrations under
-/// `databases/postgresql` target. Rename the module/file to
-/// `role_repository_postgres.rs` if you want the naming to match reality.
+/// SQLx/Postgres implementation of [`RoleRepository`], targeting the schema
+/// defined by the migrations under `databases/postgresql`.
 #[derive(Clone)]
 pub struct RoleRepositoryPg {
     pool: PgPool,

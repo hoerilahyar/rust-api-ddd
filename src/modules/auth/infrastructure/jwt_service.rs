@@ -58,11 +58,17 @@ impl JwtService {
 
     pub fn decode_access_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
         let data = decode::<Claims>(token, &self.access_decoding_key, &Validation::default())?;
+        if data.claims.token_type != TokenType::Access {
+            return Err(jsonwebtoken::errors::ErrorKind::InvalidToken.into());
+        }
         Ok(data.claims)
     }
 
     pub fn decode_refresh_token(&self, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
         let data = decode::<Claims>(token, &self.refresh_decoding_key, &Validation::default())?;
+        if data.claims.token_type != TokenType::Refresh {
+            return Err(jsonwebtoken::errors::ErrorKind::InvalidToken.into());
+        }
         Ok(data.claims)
     }
 }
