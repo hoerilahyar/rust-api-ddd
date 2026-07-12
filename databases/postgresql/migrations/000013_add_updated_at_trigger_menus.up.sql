@@ -1,4 +1,4 @@
--- Extends the generic trigger_set_updated_at() function (see migration 000016)
+-- Extends the generic trigger_set_updated_at() function (defined in migration 000003)
 -- to the new menus table.
 CREATE TRIGGER set_updated_at_menus
     BEFORE UPDATE ON menus

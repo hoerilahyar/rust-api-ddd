@@ -11,6 +11,8 @@ use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
 use crate::modules::auth::infrastructure::persistence::AuthRepositoryPg;
+use crate::modules::menu::application::{MenuService, MenuServiceImpl};
+use crate::modules::menu::infrastructure::persistence::MenuRepositoryPg;
 use crate::modules::permission::application::{PermissionService, PermissionServiceImpl};
 use crate::modules::permission::infrastructure::persistence::PermissionRepositoryPg;
 use crate::modules::role::application::{RoleService, RoleServiceImpl};
@@ -35,6 +37,7 @@ pub struct AppState {
     pub role_service: Arc<dyn RoleService>,
     pub permission_service: Arc<dyn PermissionService>,
     pub audit_log_service: Arc<dyn AuditLogService>,
+    pub menu_service: Arc<dyn MenuService>,
 }
 
 impl AppState {
@@ -54,6 +57,7 @@ impl AppState {
             Arc::new(PermissionRepositoryPg::new(db.clone()));
         let audit_log_repo: Arc<AuditLogRepositoryPg> =
             Arc::new(AuditLogRepositoryPg::new(db.clone()));
+        let menu_repo: Arc<MenuRepositoryPg> = Arc::new(MenuRepositoryPg::new(db.clone()));
 
         let user_service: Arc<dyn UserService> =
             Arc::new(UserServiceImpl::new(user_repo.clone(), cache.clone()));
@@ -76,6 +80,9 @@ impl AppState {
         let audit_log_service: Arc<dyn AuditLogService> =
             Arc::new(AuditLogServiceImpl::new(audit_log_repo));
 
+        let menu_service: Arc<dyn MenuService> =
+            Arc::new(MenuServiceImpl::new(menu_repo, cache.clone()));
+
         Self {
             started_at: Utc::now(),
             config,
@@ -87,6 +94,7 @@ impl AppState {
             role_service,
             permission_service,
             audit_log_service,
+            menu_service,
         }
     }
 }
