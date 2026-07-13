@@ -54,3 +54,57 @@ impl RecordStatus {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn params(page: i64, limit: i64) -> PaginationParams {
+        PaginationParams {
+            page,
+            limit,
+            search: None,
+        }
+    }
+
+    #[test]
+    fn normalized_keeps_sane_values_as_is() {
+        assert_eq!(params(2, 20).normalized(), (2, 20));
+    }
+
+    #[test]
+    fn normalized_floors_page_at_one() {
+        assert_eq!(params(0, 20).normalized(), (1, 20));
+        assert_eq!(params(-5, 20).normalized(), (1, 20));
+    }
+
+    #[test]
+    fn normalized_clamps_limit_between_one_and_hundred() {
+        assert_eq!(params(1, 0).normalized(), (1, 1));
+        assert_eq!(params(1, -10).normalized(), (1, 1));
+        assert_eq!(params(1, 999_999).normalized(), (1, 100));
+    }
+
+    #[test]
+    fn offset_matches_page_and_limit() {
+        assert_eq!(params(1, 20).offset(), 0);
+        assert_eq!(params(3, 20).offset(), 40);
+        // Out-of-range input still normalizes before computing the offset.
+        assert_eq!(params(0, 20).offset(), 0);
+    }
+
+    #[test]
+    fn record_status_prioritizes_deleted_over_active_flag() {
+        let now = Some(chrono::Utc::now());
+        // Even an is_active=true row is "Deleted" once deleted_at is set --
+        // soft-delete must win over the active flag.
+        assert_eq!(RecordStatus::from_flags(true, now), RecordStatus::Deleted);
+        assert_eq!(RecordStatus::from_flags(false, now), RecordStatus::Deleted);
+    }
+
+    #[test]
+    fn record_status_reflects_active_flag_when_not_deleted() {
+        assert_eq!(RecordStatus::from_flags(true, None), RecordStatus::Active);
+        assert_eq!(RecordStatus::from_flags(false, None), RecordStatus::Inactive);
+    }
+}

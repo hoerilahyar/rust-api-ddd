@@ -72,3 +72,109 @@ impl JwtService {
         Ok(data.claims)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::bootstrap::config::JwtConfig;
+
+    fn service() -> JwtService {
+        JwtService::new(&JwtConfig {
+            access_secret: "test-access-secret".to_string(),
+            refresh_secret: "test-refresh-secret".to_string(),
+            access_ttl_seconds: 900,
+            refresh_ttl_seconds: 604_800,
+        })
+    }
+
+    fn user() -> UserAuthProjection {
+        UserAuthProjection {
+            id: 42,
+            name: "Jane Doe".to_string(),
+            username: "jane".to_string(),
+            email: "jane@example.com".to_string(),
+            password_hash: "irrelevant-for-jwt".to_string(),
+            is_active: true,
+            roles: vec!["admin".to_string()],
+            permissions: vec!["user.manage".to_string()],
+        }
+    }
+
+    #[test]
+    fn access_token_roundtrips_and_carries_claims() {
+        let svc = service();
+        let (token, ttl) = svc.generate_access_token(&user()).unwrap();
+        assert_eq!(ttl, 900);
+
+        let claims = svc.decode_access_token(&token).unwrap();
+        assert_eq!(claims.sub, 42);
+        assert_eq!(claims.username, "jane");
+        assert_eq!(claims.roles, vec!["admin".to_string()]);
+        assert_eq!(claims.token_type, TokenType::Access);
+    }
+
+    #[test]
+    fn refresh_token_roundtrips_and_carries_claims() {
+        let svc = service();
+        let (token, ttl) = svc.generate_refresh_token(&user()).unwrap();
+        assert_eq!(ttl, 604_800);
+
+        let claims = svc.decode_refresh_token(&token).unwrap();
+        assert_eq!(claims.sub, 42);
+        assert_eq!(claims.token_type, TokenType::Refresh);
+    }
+
+    /// Regression test for the token_type validation fix: previously
+    /// `decode_access_token`/`decode_refresh_token` only checked the
+    /// signature and expiry, never `token_type`, so a refresh token could
+    /// be used to pass `require_auth` if the two secrets were ever
+    /// misconfigured to be equal. These two tests use the SAME secret for
+    /// both sides to simulate that misconfiguration and confirm the type
+    /// check alone is what blocks the swap.
+    #[test]
+    fn access_token_rejected_when_decoded_as_refresh_even_with_shared_secret() {
+        let shared_secret = "only-one-secret".to_string();
+        let svc = JwtService::new(&JwtConfig {
+            access_secret: shared_secret.clone(),
+            refresh_secret: shared_secret,
+            access_ttl_seconds: 900,
+            refresh_ttl_seconds: 604_800,
+        });
+
+        let (access_token, _) = svc.generate_access_token(&user()).unwrap();
+        let result = svc.decode_refresh_token(&access_token);
+
+        assert!(result.is_err(), "an access token must never pass as a refresh token");
+    }
+
+    #[test]
+    fn refresh_token_rejected_when_decoded_as_access_even_with_shared_secret() {
+        let shared_secret = "only-one-secret".to_string();
+        let svc = JwtService::new(&JwtConfig {
+            access_secret: shared_secret.clone(),
+            refresh_secret: shared_secret,
+            access_ttl_seconds: 900,
+            refresh_ttl_seconds: 604_800,
+        });
+
+        let (refresh_token, _) = svc.generate_refresh_token(&user()).unwrap();
+        let result = svc.decode_access_token(&refresh_token);
+
+        assert!(result.is_err(), "a refresh token must never pass as an access token");
+    }
+
+    #[test]
+    fn decode_fails_with_wrong_secret() {
+        let svc = service();
+        let (token, _) = svc.generate_access_token(&user()).unwrap();
+
+        let other = JwtService::new(&JwtConfig {
+            access_secret: "a-completely-different-secret".to_string(),
+            refresh_secret: "another-different-secret".to_string(),
+            access_ttl_seconds: 900,
+            refresh_ttl_seconds: 604_800,
+        });
+
+        assert!(other.decode_access_token(&token).is_err());
+    }
+}

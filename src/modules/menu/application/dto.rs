@@ -122,3 +122,41 @@ impl From<Menu> for MenuTreeNode {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The whole point of `de_double_option`: three distinct wire states
+    /// must map to three distinct Rust values. A regular `Option<Option<i32>>`
+    /// without the custom deserializer would collapse "omitted" and
+    /// "explicit null" into the same `None`, silently turning every
+    /// "move to top-level" request into a no-op.
+    #[test]
+    fn omitted_parent_id_means_dont_touch() {
+        let req: UpdateMenuRequest = serde_json::from_str(r#"{"name": "Reports"}"#).unwrap();
+        assert_eq!(req.parent_id, None);
+    }
+
+    #[test]
+    fn explicit_null_parent_id_means_move_to_top_level() {
+        let req: UpdateMenuRequest =
+            serde_json::from_str(r#"{"name": "Reports", "parent_id": null}"#).unwrap();
+        assert_eq!(req.parent_id, Some(None));
+    }
+
+    #[test]
+    fn explicit_value_parent_id_means_reparent() {
+        let req: UpdateMenuRequest =
+            serde_json::from_str(r#"{"name": "Reports", "parent_id": 7}"#).unwrap();
+        assert_eq!(req.parent_id, Some(Some(7)));
+    }
+
+    #[test]
+    fn other_optional_fields_still_omit_normally() {
+        let req: UpdateMenuRequest = serde_json::from_str(r#"{}"#).unwrap();
+        assert_eq!(req.name, None);
+        assert_eq!(req.is_active, None);
+        assert_eq!(req.parent_id, None);
+    }
+}

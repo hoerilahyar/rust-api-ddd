@@ -223,3 +223,165 @@ impl MenuService for MenuServiceImpl {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+
+    /// Builds a bare-bones `Menu` for tests -- only `id`/`parent_id` matter
+    /// for tree/cycle tests, the rest are filled with harmless defaults.
+    fn menu(id: i32, parent_id: Option<i32>, order_index: i32) -> Menu {
+        Menu {
+            id,
+            parent_id,
+            name: format!("menu-{id}"),
+            slug: format!("menu-{id}"),
+            path: None,
+            icon: None,
+            order_index,
+            is_active: true,
+            permissions: Vec::new(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn menu_with_permissions(id: i32, parent_id: Option<i32>, permissions: &[&str]) -> Menu {
+        let mut m = menu(id, parent_id, 0);
+        m.permissions = permissions.iter().map(|s| s.to_string()).collect();
+        m
+    }
+
+    // ---- build_tree ----
+
+    #[test]
+    fn build_tree_nests_children_under_their_parent() {
+        let menus = vec![menu(1, None, 0), menu(2, Some(1), 0), menu(3, Some(1), 0)];
+
+        let tree = build_tree(menus);
+
+        assert_eq!(tree.len(), 1);
+        assert_eq!(tree[0].id, 1);
+        assert_eq!(tree[0].children.len(), 2);
+        assert_eq!(tree[0].children[0].id, 2);
+        assert_eq!(tree[0].children[1].id, 3);
+    }
+
+    #[test]
+    fn build_tree_sorts_siblings_by_order_index() {
+        let menus = vec![
+            menu(1, None, 0),
+            menu(2, Some(1), 5),
+            menu(3, Some(1), 1),
+            menu(4, Some(1), 3),
+        ];
+
+        let tree = build_tree(menus);
+
+        let child_ids: Vec<i32> = tree[0].children.iter().map(|c| c.id).collect();
+        assert_eq!(child_ids, vec![3, 4, 2]);
+    }
+
+    #[test]
+    fn build_tree_nests_multiple_levels_deep() {
+        let menus = vec![
+            menu(1, None, 0),
+            menu(2, Some(1), 0),
+            menu(3, Some(2), 0),
+        ];
+
+        let tree = build_tree(menus);
+
+        assert_eq!(tree[0].children[0].id, 2);
+        assert_eq!(tree[0].children[0].children[0].id, 3);
+    }
+
+    #[test]
+    fn build_tree_drops_subtree_when_parent_is_missing_from_input() {
+        // Simulates an invisible/filtered-out parent: children pointing at
+        // an id that isn't in the input list must not become roots, and
+        // must not surface anywhere in the resulting tree.
+        let menus = vec![menu(1, None, 0), menu(2, Some(99), 0), menu(3, Some(2), 0)];
+
+        let tree = build_tree(menus);
+
+        assert_eq!(tree.len(), 1);
+        assert_eq!(tree[0].id, 1);
+        assert!(tree[0].children.is_empty());
+    }
+
+    // ---- would_create_cycle ----
+
+    #[test]
+    fn cycle_detected_when_reparenting_under_self() {
+        let all = vec![menu(1, None, 0)];
+        assert!(would_create_cycle(1, 1, &all));
+    }
+
+    #[test]
+    fn cycle_detected_when_reparenting_under_own_descendant() {
+        // 1 -> 2 -> 3; trying to move 1 under 3 (its own grandchild).
+        let all = vec![menu(1, None, 0), menu(2, Some(1), 0), menu(3, Some(2), 0)];
+        assert!(would_create_cycle(1, 3, &all));
+    }
+
+    #[test]
+    fn no_cycle_when_reparenting_under_unrelated_menu() {
+        let all = vec![menu(1, None, 0), menu(2, None, 0), menu(3, Some(1), 0)];
+        assert!(!would_create_cycle(3, 2, &all));
+    }
+
+    #[test]
+    fn no_cycle_when_reparenting_under_a_sibling() {
+        let all = vec![menu(1, None, 0), menu(2, Some(1), 0), menu(3, Some(1), 0)];
+        assert!(!would_create_cycle(2, 3, &all));
+    }
+
+    // ---- filter_visible ----
+
+    #[test]
+    fn filter_visible_keeps_menus_with_no_permission_requirement() {
+        let menus = vec![menu(1, None, 0)]; // no permissions attached
+        let visible = filter_visible(menus, &[]);
+        assert_eq!(visible.len(), 1);
+    }
+
+    #[test]
+    fn filter_visible_keeps_menu_when_caller_has_a_matching_permission() {
+        let menus = vec![menu_with_permissions(1, None, &["user.manage"])];
+        let visible = filter_visible(menus, &["user.manage".to_string()]);
+        assert_eq!(visible.len(), 1);
+    }
+
+    #[test]
+    fn filter_visible_drops_menu_when_caller_lacks_every_required_permission() {
+        let menus = vec![menu_with_permissions(1, None, &["user.manage"])];
+        let visible = filter_visible(menus, &["audit.read".to_string()]);
+        assert!(visible.is_empty());
+    }
+
+    #[test]
+    fn filter_visible_drops_inactive_menus_regardless_of_permissions() {
+        let mut m = menu(1, None, 0);
+        m.is_active = false;
+        let visible = filter_visible(vec![m], &[]);
+        assert!(visible.is_empty());
+    }
+
+    // ---- build_tree + filter_visible combined (the actual visible_tree behavior) ----
+
+    #[test]
+    fn hiding_a_parent_also_hides_its_children_in_the_visible_tree() {
+        let admin_only_parent = menu_with_permissions(1, None, &["admin.only"]);
+        let child = menu(2, Some(1), 0); // no permission requirement of its own
+
+        let visible = filter_visible(vec![admin_only_parent, child], &[]);
+        let tree = build_tree(visible);
+
+        // The child individually has no permission requirement, but its
+        // parent does and the caller doesn't hold it -- the whole subtree
+        // must disappear, not just the parent.
+        assert!(tree.is_empty());
+    }
+}
