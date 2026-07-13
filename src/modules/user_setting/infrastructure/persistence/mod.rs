@@ -1,0 +1,3 @@
+pub mod user_setting_repository_postgres;
+
+pub use user_setting_repository_postgres::UserSettingRepositoryPg;

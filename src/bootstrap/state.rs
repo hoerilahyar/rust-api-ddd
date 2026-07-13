@@ -17,9 +17,13 @@ use crate::modules::permission::application::{PermissionService, PermissionServi
 use crate::modules::permission::infrastructure::persistence::PermissionRepositoryPg;
 use crate::modules::role::application::{RoleService, RoleServiceImpl};
 use crate::modules::role::infrastructure::persistence::RoleRepositoryPg;
+use crate::modules::setting::application::{SettingService, SettingServiceImpl};
+use crate::modules::setting::infrastructure::persistence::SettingRepositoryPg;
 use crate::modules::user::application::service::UserService;
 use crate::modules::user::application::service_impl::UserServiceImpl;
 use crate::modules::user::infrastructure::persistence::UserRepositoryPg;
+use crate::modules::user_setting::application::{UserSettingService, UserSettingServiceImpl};
+use crate::modules::user_setting::infrastructure::persistence::UserSettingRepositoryPg;
 use crate::shared::cache::RedisCacheRepository;
 
 /// Shared application state injected into every handler via `State<AppState>`.
@@ -38,6 +42,8 @@ pub struct AppState {
     pub permission_service: Arc<dyn PermissionService>,
     pub audit_log_service: Arc<dyn AuditLogService>,
     pub menu_service: Arc<dyn MenuService>,
+    pub setting_service: Arc<dyn SettingService>,
+    pub user_setting_service: Arc<dyn UserSettingService>,
 }
 
 impl AppState {
@@ -58,6 +64,9 @@ impl AppState {
         let audit_log_repo: Arc<AuditLogRepositoryPg> =
             Arc::new(AuditLogRepositoryPg::new(db.clone()));
         let menu_repo: Arc<MenuRepositoryPg> = Arc::new(MenuRepositoryPg::new(db.clone()));
+        let setting_repo: Arc<SettingRepositoryPg> = Arc::new(SettingRepositoryPg::new(db.clone()));
+        let user_setting_repo: Arc<UserSettingRepositoryPg> =
+            Arc::new(UserSettingRepositoryPg::new(db.clone()));
 
         let user_service: Arc<dyn UserService> =
             Arc::new(UserServiceImpl::new(user_repo.clone(), cache.clone()));
@@ -83,6 +92,12 @@ impl AppState {
         let menu_service: Arc<dyn MenuService> =
             Arc::new(MenuServiceImpl::new(menu_repo, cache.clone()));
 
+        let setting_service: Arc<dyn SettingService> =
+            Arc::new(SettingServiceImpl::new(setting_repo, cache.clone()));
+
+        let user_setting_service: Arc<dyn UserSettingService> =
+            Arc::new(UserSettingServiceImpl::new(user_setting_repo, cache.clone()));
+
         Self {
             started_at: Utc::now(),
             config,
@@ -95,6 +110,8 @@ impl AppState {
             permission_service,
             audit_log_service,
             menu_service,
+            setting_service,
+            user_setting_service,
         }
     }
 }
