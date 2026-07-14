@@ -1,11 +1,13 @@
 use std::net::SocketAddr;
 
 use axum::{
+    body::{to_bytes, Body},
     extract::{ConnectInfo, MatchedPath, Request, State},
     http::{header, Method},
     middleware::Next,
     response::Response,
 };
+use serde_json::Value;
 use uuid::Uuid;
 
 use crate::bootstrap::state::AppState;
@@ -65,7 +67,23 @@ pub async fn activity_log_middleware(
     let resource_id = last_path_param(template, &actual_path);
 
     let response = next.run(req).await;
-    let status_code = Some(response.status().as_u16() as i16);
+
+    let status = response.status();
+    let status_code = Some(status.as_u16() as i16);
+
+    let (parts, body) = response.into_parts();
+
+    let bytes = to_bytes(body, usize::MAX).await.unwrap_or_default();
+
+    let description = if status.is_client_error() || status.is_server_error() {
+        serde_json::from_slice::<Value>(&bytes)
+            .ok()
+            .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(String::from))
+    } else {
+        None
+    };
+
+    let response = Response::from_parts(parts, Body::from(bytes));
 
     let recorder = state.activity_recorder.clone();
     let record = RecordActivity {
@@ -76,7 +94,7 @@ pub async fn activity_log_middleware(
         resource_id,
         method: to_method_request(&method),
         path: actual_path,
-        description: None,
+        description: description,
         ip_address,
         user_agent,
         status_code,

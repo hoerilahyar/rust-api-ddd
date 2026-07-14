@@ -1,7 +1,7 @@
 use axum::{
-    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
+    Json,
 };
 use serde_json::json;
 
@@ -48,6 +48,14 @@ pub struct FieldError {
 }
 
 impl AppError {
+    pub fn status(&self) -> StatusCode {
+        self.status_and_message().0
+    }
+
+    pub fn message(&self) -> String {
+        self.status_and_message().1
+    }
+
     fn status_and_message(&self) -> (StatusCode, String) {
         match self {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg.clone()),
@@ -55,19 +63,34 @@ impl AppError {
             AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg.clone()),
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.clone()),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, msg.clone()),
-            AppError::Validation(_) => (StatusCode::UNPROCESSABLE_ENTITY, "validation failed".to_string()),
-            AppError::TooManyRequests => (StatusCode::TOO_MANY_REQUESTS, "too many requests".to_string()),
+            AppError::Validation(_) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "validation failed".to_string(),
+            ),
+            AppError::TooManyRequests => (
+                StatusCode::TOO_MANY_REQUESTS,
+                "too many requests".to_string(),
+            ),
             AppError::Database(err) => {
                 tracing::error!(error = ?err, "database error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
             AppError::Cache(err) => {
                 tracing::error!(error = %err, "cache error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
             AppError::Internal(err) => {
                 tracing::error!(error = ?err, "internal error");
-                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error".to_string())
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "internal server error".to_string(),
+                )
             }
         }
     }
