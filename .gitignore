@@ -18,3 +18,5 @@ config/config.local.yaml
 .vscode/
 *.iml
 .DS_Store
+
+/storage

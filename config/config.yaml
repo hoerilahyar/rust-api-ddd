@@ -25,3 +25,7 @@ rate_limit:
   # false when exposed directly to the internet prevents rate-limit
   # bypass via a spoofed header.
   trust_proxy: false
+
+storage:
+  base_path: "storage/files"
+  max_upload_bytes: 20971520 # 20 MB

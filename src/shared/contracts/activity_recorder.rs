@@ -117,6 +117,7 @@ pub enum Module {
     UserSetting,
     Audit,
     ActivityLog,
+    File,
 }
 
 impl Module {
@@ -131,6 +132,7 @@ impl Module {
             Module::UserSetting => "UserSetting",
             Module::Audit => "Audit",
             Module::ActivityLog => "Log",
+            Module::File => "File",
         }
     }
 
@@ -145,6 +147,7 @@ impl Module {
             "UserSetting" => Module::UserSetting,
             "Audit" => Module::Audit,
             "Log" => Module::ActivityLog,
+            "File" => Module::File,
             _ => Module::ActivityLog,
         }
     }

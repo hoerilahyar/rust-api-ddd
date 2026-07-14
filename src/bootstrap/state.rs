@@ -13,6 +13,9 @@ use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
 use crate::modules::auth::infrastructure::persistence::AuthRepositoryPg;
+use crate::modules::file::application::{FileService, FileServiceImpl};
+use crate::modules::file::infrastructure::persistence::FileRepositoryPg;
+use crate::modules::file::infrastructure::storage::LocalFileStorage;
 use crate::modules::menu::application::{MenuService, MenuServiceImpl};
 use crate::modules::menu::infrastructure::persistence::MenuRepositoryPg;
 use crate::modules::permission::application::{PermissionService, PermissionServiceImpl};
@@ -51,6 +54,7 @@ pub struct AppState {
     pub menu_service: Arc<dyn MenuService>,
     pub setting_service: Arc<dyn SettingService>,
     pub user_setting_service: Arc<dyn UserSettingService>,
+    pub file_service: Arc<dyn FileService>,
 }
 
 impl AppState {
@@ -76,6 +80,11 @@ impl AppState {
         let setting_repo: Arc<SettingRepositoryPg> = Arc::new(SettingRepositoryPg::new(db.clone()));
         let user_setting_repo: Arc<UserSettingRepositoryPg> =
             Arc::new(UserSettingRepositoryPg::new(db.clone()));
+        let file_repo: Arc<FileRepositoryPg> = Arc::new(FileRepositoryPg::new(db.clone()));
+        let file_storage = Arc::new(
+            LocalFileStorage::new(config.storage.base_path.clone())
+                .expect("failed to initialize local file storage directory"),
+        );
 
         let user_service: Arc<dyn UserService> =
             Arc::new(UserServiceImpl::new(user_repo.clone(), cache.clone()));
@@ -113,6 +122,12 @@ impl AppState {
         let user_setting_service: Arc<dyn UserSettingService> =
             Arc::new(UserSettingServiceImpl::new(user_setting_repo, cache.clone()));
 
+        let file_service: Arc<dyn FileService> = Arc::new(FileServiceImpl::new(
+            file_repo,
+            file_storage,
+            config.storage.max_upload_bytes,
+        ));
+
         Self {
             started_at: Utc::now(),
             config,
@@ -129,6 +144,7 @@ impl AppState {
             menu_service,
             setting_service,
             user_setting_service,
+            file_service,
         }
     }
 }

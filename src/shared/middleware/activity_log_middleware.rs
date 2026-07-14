@@ -71,19 +71,38 @@ pub async fn activity_log_middleware(
     let status = response.status();
     let status_code = Some(status.as_u16() as i16);
 
-    let (parts, body) = response.into_parts();
+    // Only buffer the body when it's realistically a small JSON error
+    // payload -- never for a success response, and never when we can't
+    // already tell from headers that it's small JSON. This matters
+    // because responses like a file download stream gigabytes through
+    // this same middleware; buffering those into memory here would defeat
+    // the whole point of streaming them.
+    const MAX_DESCRIPTION_BODY_BYTES: usize = 64 * 1024;
+    let is_small_json_error = (status.is_client_error() || status.is_server_error())
+        && response
+            .headers()
+            .get(header::CONTENT_TYPE)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|ct| ct.starts_with("application/json"))
+        && response
+            .headers()
+            .get(header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.parse::<usize>().ok())
+            .is_some_and(|len| len <= MAX_DESCRIPTION_BODY_BYTES);
 
-    let bytes = to_bytes(body, usize::MAX).await.unwrap_or_default();
-
-    let description = if status.is_client_error() || status.is_server_error() {
-        serde_json::from_slice::<Value>(&bytes)
+    let (response, description) = if is_small_json_error {
+        let (parts, body) = response.into_parts();
+        let bytes = to_bytes(body, MAX_DESCRIPTION_BODY_BYTES)
+            .await
+            .unwrap_or_default();
+        let description = serde_json::from_slice::<Value>(&bytes)
             .ok()
-            .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(String::from))
+            .and_then(|v| v.get("message").and_then(|m| m.as_str()).map(String::from));
+        (Response::from_parts(parts, Body::from(bytes)), description)
     } else {
-        None
+        (response, None)
     };
-
-    let response = Response::from_parts(parts, Body::from(bytes));
 
     let recorder = state.activity_recorder.clone();
     let record = RecordActivity {
@@ -94,7 +113,7 @@ pub async fn activity_log_middleware(
         resource_id,
         method: to_method_request(&method),
         path: actual_path,
-        description: description,
+        description,
         ip_address,
         user_agent,
         status_code,
@@ -139,6 +158,7 @@ fn infer_module(template: &str) -> Module {
         Some("settings") => Module::Setting,
         Some("audit") => Module::Audit,
         Some("activity-logs") => Module::ActivityLog,
+        Some("files") => Module::File,
         Some("me") => match segments.next() {
             Some("menu") => Module::Menu,
             Some("settings") => Module::UserSetting,
@@ -159,6 +179,7 @@ fn module_resource_type(module: &Module) -> &'static str {
         Module::UserSetting => "user_setting",
         Module::Audit => "login_log",
         Module::ActivityLog => "activity_log",
+        Module::File => "file",
     }
 }
 
@@ -166,7 +187,8 @@ fn module_resource_type(module: &Module) -> &'static str {
 /// handful of assign/unassign-shaped endpoints (`POST .../roles`,
 /// `DELETE .../roles/:role`, `POST .../permission`,
 /// `DELETE .../permission/:permission`) so those read as `Assign`/`Unassign`
-/// rather than the generic `Create`/`Delete`.
+/// rather than the generic `Create`/`Delete`, and the file module's
+/// `POST /files` / `GET .../download` as `Upload`/`Download`.
 fn infer_activity(method: &Method, template: &str) -> Activity {
     let last_segment_is_param = template
         .rsplit('/')
@@ -174,10 +196,16 @@ fn infer_activity(method: &Method, template: &str) -> Activity {
         .map(|s| s.starts_with(':'))
         .unwrap_or(false);
 
+    if method == Method::GET && template.ends_with("/download") {
+        return Activity::Download;
+    }
+
     match *method {
         Method::POST => {
             if template.ends_with("/roles") || template.ends_with("/permission") {
                 Activity::Assign
+            } else if template.ends_with("/files") {
+                Activity::Upload
             } else {
                 Activity::Create
             }

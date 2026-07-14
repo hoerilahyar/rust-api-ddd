@@ -7,6 +7,7 @@ pub struct AppConfig {
     pub redis: RedisConfig,
     pub jwt: JwtConfig,
     pub rate_limit: RateLimitConfig,
+    pub storage: StorageConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -84,6 +85,29 @@ impl RateLimitConfig {
 
     fn default_window_seconds() -> u32 {
         60
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct StorageConfig {
+    /// Local-disk root that uploaded files are written under. Relative
+    /// paths resolve against the process's working directory.
+    #[serde(default = "StorageConfig::default_base_path")]
+    pub base_path: String,
+    /// Hard cap on a single upload, in bytes. Also used to set
+    /// `DefaultBodyLimit` on the upload route, so a request over this size
+    /// is rejected before the body is even read into memory.
+    #[serde(default = "StorageConfig::default_max_upload_bytes")]
+    pub max_upload_bytes: usize,
+}
+
+impl StorageConfig {
+    fn default_base_path() -> String {
+        "storage/files".to_string()
+    }
+
+    fn default_max_upload_bytes() -> usize {
+        20 * 1024 * 1024 // 20 MB
     }
 }
 
