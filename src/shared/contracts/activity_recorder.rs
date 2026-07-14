@@ -9,6 +9,9 @@ use crate::shared::errors::AppError;
 pub enum Activity {
     Login,
     Logout,
+    Refresh,
+    ForgotPassword,
+    ResetPassword,
     View,
     List,
     Search,
@@ -30,6 +33,9 @@ impl Activity {
         match self {
             Activity::Login => "LOGIN",
             Activity::Logout => "LOGOUT",
+            Activity::Refresh => "REFRESH",
+            Activity::ForgotPassword => "FORGOT_PASSWORD",
+            Activity::ResetPassword => "RESET_PASSWORD",
             Activity::View => "VIEW",
             Activity::List => "LIST",
             Activity::Search => "SEARCH",
@@ -51,6 +57,9 @@ impl Activity {
         match value {
             "LOGIN" => Activity::Login,
             "LOGOUT" => Activity::Logout,
+            "REFRESH" => Activity::Refresh,
+            "FORGOT_PASSWORD" => Activity::ForgotPassword,
+            "RESET_PASSWORD" => Activity::ResetPassword,
             "VIEW" => Activity::View,
             "LIST" => Activity::List,
             "SEARCH" => Activity::Search,
