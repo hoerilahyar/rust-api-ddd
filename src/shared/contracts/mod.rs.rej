@@ -1,9 +1,0 @@
-diff a/src/shared/contracts/mod.rs b/src/shared/contracts/mod.rs	(rejected hunks)
-@@ -1,5 +1,7 @@
-+pub mod activity_recorder;
- pub mod audit_recorder;
- pub mod user_reader;
- 
-+pub use activity_recorder::{Activity, ActivityRecorder, MethodRequest, Module, RecordActivity};
- pub use audit_recorder::{AuditRecorder, LoginAttempt, LoginStatus};
- pub use user_reader::{UserAuthProjection, UserReader};
