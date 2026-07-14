@@ -17,7 +17,7 @@ use crate::shared::errors::AppError;
 /// value in that header and bypass rate limiting entirely, since anyone can
 /// set it. When multiple IPs are chained (`client, proxy1, proxy2`), the
 /// first one is the original client.
-fn resolve_client_ip(headers: &HeaderMap, socket_ip: IpAddr, trust_proxy: bool) -> String {
+pub fn resolve_client_ip(headers: &HeaderMap, socket_ip: IpAddr, trust_proxy: bool) -> String {
     if trust_proxy {
         headers
             .get("x-forwarded-for")

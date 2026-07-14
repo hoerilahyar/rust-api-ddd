@@ -1,3 +1,4 @@
+pub mod activity_log;
 pub mod audit;
 pub mod auth;
 pub mod menu;

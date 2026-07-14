@@ -1,0 +1,3 @@
+pub mod activity_log_repository_postgres;
+
+pub use activity_log_repository_postgres::ActivityLogRepositoryPg;

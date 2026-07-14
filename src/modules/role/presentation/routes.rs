@@ -3,7 +3,7 @@ use axum::Router;
 
 use crate::bootstrap::state::AppState;
 use crate::modules::role::presentation::handler;
-use crate::shared::middleware::require_auth;
+use crate::shared::middleware::{activity_log_middleware, require_auth};
 
 /// All `/roles` + `/me` routes. Mounted under auth in `bootstrap::router`,
 /// so every route here already requires a valid access token.
@@ -19,5 +19,9 @@ pub fn routes(state: AppState) -> Router<AppState> {
             "/roles/:id/permission/:permission",
             delete(handler::revoke_permission),
         )
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            activity_log_middleware,
+        ))
         .route_layer(axum::middleware::from_fn_with_state(state, require_auth))
 }

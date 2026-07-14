@@ -3,7 +3,7 @@ use axum::Router;
 
 use crate::bootstrap::state::AppState;
 use crate::modules::menu::presentation::handler;
-use crate::shared::middleware::require_auth;
+use crate::shared::middleware::{activity_log_middleware, require_auth};
 
 /// `/me/menu` is available to any authenticated user (filtered to what
 /// their permissions allow -- see `MenuService::visible_tree`). Every other
@@ -23,5 +23,9 @@ pub fn routes(state: AppState) -> Router<AppState> {
             "/menus/:id/permission/:permission",
             delete(handler::revoke_permission),
         )
+        .route_layer(axum::middleware::from_fn_with_state(
+            state.clone(),
+            activity_log_middleware,
+        ))
         .route_layer(axum::middleware::from_fn_with_state(state, require_auth))
 }
