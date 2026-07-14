@@ -1,5 +1,5 @@
 pub mod activity_log;
-pub mod audit;
+pub mod audit_log;
 pub mod auth;
 pub mod file;
 pub mod menu;

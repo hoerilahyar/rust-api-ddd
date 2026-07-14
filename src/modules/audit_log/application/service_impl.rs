@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::modules::audit::application::service::AuditLogService;
-use crate::modules::audit::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
+use crate::modules::audit_log::application::service::AuditLogService;
+use crate::modules::audit_log::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
 use crate::shared::errors::AppError;
 
 pub struct AuditLogServiceImpl {

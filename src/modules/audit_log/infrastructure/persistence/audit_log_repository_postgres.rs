@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use sqlx::{PgPool, Row};
 
-use crate::modules::audit::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
+use crate::modules::audit_log::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
 use crate::shared::contracts::LoginStatus;
 use crate::shared::errors::AppError;
 

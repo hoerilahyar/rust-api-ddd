@@ -6,7 +6,10 @@ use axum::{
 
 use crate::{
     bootstrap::state::AppState,
-    modules::{audit::application::LoginLogResponse, audit::domain::LoginLogQuery, auth::domain::Claims},
+    modules::{
+        audit_log::application::LoginLogResponse, audit_log::domain::LoginLogQuery,
+        auth::domain::Claims,
+    },
     shared::{
         errors::AppError,
         middleware::ensure_permission,

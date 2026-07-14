@@ -7,8 +7,8 @@ use sqlx::PgPool;
 use crate::bootstrap::config::AppConfig;
 use crate::modules::activity_log::application::{ActivityLogService, ActivityLogServiceImpl};
 use crate::modules::activity_log::infrastructure::persistence::ActivityLogRepositoryPg;
-use crate::modules::audit::application::{AuditLogService, AuditLogServiceImpl};
-use crate::modules::audit::infrastructure::persistence::AuditLogRepositoryPg;
+use crate::modules::audit_log::application::{AuditLogService, AuditLogServiceImpl};
+use crate::modules::audit_log::infrastructure::persistence::AuditLogRepositoryPg;
 use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
@@ -119,8 +119,9 @@ impl AppState {
         let setting_service: Arc<dyn SettingService> =
             Arc::new(SettingServiceImpl::new(setting_repo, cache.clone()));
 
-        let user_setting_service: Arc<dyn UserSettingService> =
-            Arc::new(UserSettingServiceImpl::new(user_setting_repo, cache.clone()));
+        let user_setting_service: Arc<dyn UserSettingService> = Arc::new(
+            UserSettingServiceImpl::new(user_setting_repo, cache.clone()),
+        );
 
         let file_service: Arc<dyn FileService> = Arc::new(FileServiceImpl::new(
             file_repo,

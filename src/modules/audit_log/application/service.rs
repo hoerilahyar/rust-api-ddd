@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 
-use crate::modules::audit::domain::{LoginLog, LoginLogQuery};
+use crate::modules::audit_log::domain::{LoginLog, LoginLogQuery};
 use crate::shared::errors::AppError;
 
 #[async_trait]

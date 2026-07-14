@@ -2,7 +2,7 @@ use axum::routing::get;
 use axum::Router;
 
 use crate::bootstrap::state::AppState;
-use crate::modules::audit::presentation::handler;
+use crate::modules::audit_log::presentation::handler;
 use crate::shared::middleware::{activity_log_middleware, require_auth};
 
 /// All `/audit` routes. Mounted under auth in `bootstrap::router`, so every
