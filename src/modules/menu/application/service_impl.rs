@@ -11,6 +11,7 @@ use crate::modules::menu::application::dto::{CreateMenuRequest, MenuTreeNode, Up
 use crate::modules::menu::application::service::MenuService;
 use crate::modules::menu::domain::{Menu, MenuDomainError, MenuRepository};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
@@ -29,16 +30,17 @@ fn spawn_audit_log(
     old_values: Option<&Menu>,
     new_values: Option<&Menu>,
 ) {
+    let ctx = current_request_context();
     let log = AuditTrailLog {
         id: 0,
         user_id: Some(actor_id),
         action: action.to_string(),
         entity_type: ENTITY_TYPE.to_string(),
-        entity_id: None,
+        entity_id: Some(menu_id.to_string()),
         old_values: old_values.and_then(|m| serde_json::to_value(m).ok()),
         new_values: new_values.and_then(|m| serde_json::to_value(m).ok()),
-        ip_address: None,
-        user_agent: None,
+        ip_address: ctx.ip_address,
+        user_agent: ctx.user_agent,
         description: Some(format!("menu id {menu_id}")),
         created_at: Utc::now(),
     };

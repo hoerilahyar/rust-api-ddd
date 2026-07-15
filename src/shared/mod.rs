@@ -1,5 +1,6 @@
 pub mod domain;
 pub mod contracts;
+pub mod context;
 pub mod middleware;
 pub mod cache;
 pub mod response;

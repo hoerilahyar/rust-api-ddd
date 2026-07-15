@@ -31,6 +31,6 @@ impl AuditTrailLogService for AuditTrailLogServiceImpl {
         self.repo
             .find_by_id(id)
             .await?
-            .ok_or_else(|| AppError::NotFound("login log not found".to_string()))
+            .ok_or_else(|| AppError::NotFound("audit trail log not found".to_string()))
     }
 }

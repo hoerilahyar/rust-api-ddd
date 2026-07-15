@@ -12,6 +12,7 @@ use uuid::Uuid;
 
 use crate::bootstrap::state::AppState;
 use crate::modules::auth::domain::value_object::Claims;
+use crate::shared::context::{RequestContext, REQUEST_CONTEXT};
 use crate::shared::contracts::{Activity, MethodRequest, Module, RecordActivity};
 use crate::shared::errors::AppError;
 use crate::shared::middleware::rate_limiter::resolve_client_ip;
@@ -66,7 +67,11 @@ pub async fn activity_log_middleware(
     let activity = infer_activity(&method, template);
     let resource_id = last_path_param(template, &actual_path);
 
-    let response = next.run(req).await;
+    let request_context = RequestContext {
+        ip_address: ip_address.clone(),
+        user_agent: user_agent.clone(),
+    };
+    let response = REQUEST_CONTEXT.scope(request_context, next.run(req)).await;
 
     let status = response.status();
     let status_code = Some(status.as_u16() as i16);
@@ -156,7 +161,7 @@ fn infer_module(template: &str) -> Module {
         Some("permissions") => Module::Permission,
         Some("menus") => Module::Menu,
         Some("settings") => Module::Setting,
-        Some("audit") => Module::Audit,
+        Some("audit-auth") | Some("audit-trail") => Module::Audit,
         Some("activity-logs") => Module::ActivityLog,
         Some("files") => Module::File,
         Some("me") => match segments.next() {

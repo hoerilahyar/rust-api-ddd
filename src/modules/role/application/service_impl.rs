@@ -10,6 +10,7 @@ use crate::modules::role::application::service::RoleService;
 use crate::modules::role::application::{CreateRoleRequest, UpdateRoleRequest};
 use crate::modules::role::domain::{Name, Role, RoleRepository};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
@@ -26,16 +27,17 @@ fn spawn_audit_log(
     old_values: Option<&Role>,
     new_values: Option<&Role>,
 ) {
+    let ctx = current_request_context();
     let log = AuditTrailLog {
         id: 0,
         user_id: Some(actor_id),
         action: action.to_string(),
         entity_type: ENTITY_TYPE.to_string(),
-        entity_id: None,
+        entity_id: Some(role_id.to_string()),
         old_values: old_values.and_then(|r| serde_json::to_value(r).ok()),
         new_values: new_values.and_then(|r| serde_json::to_value(r).ok()),
-        ip_address: None,
-        user_agent: None,
+        ip_address: ctx.ip_address,
+        user_agent: ctx.user_agent,
         description: Some(format!("role id {role_id}")),
         created_at: Utc::now(),
     };
@@ -103,7 +105,14 @@ impl RoleService for RoleServiceImpl {
             .create(&req.name, req.description.as_deref())
             .await?;
 
-        spawn_audit_log(self.audit.clone(), actor_id, "role.create", role.id, None, Some(&role));
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "role.create",
+            role.id,
+            None,
+            Some(&role),
+        );
 
         Ok(role)
     }
@@ -155,7 +164,14 @@ impl RoleService for RoleServiceImpl {
 
         self.repo.delete(id).await?;
 
-        spawn_audit_log(self.audit.clone(), actor_id, "role.delete", id, Some(&existing), None);
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "role.delete",
+            id,
+            Some(&existing),
+            None,
+        );
 
         self.cache.delete(&cache_key(id)).await?;
         Ok(())

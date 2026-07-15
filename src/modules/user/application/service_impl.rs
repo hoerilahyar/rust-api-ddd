@@ -15,6 +15,7 @@ use crate::modules::user::domain::entity::User;
 use crate::modules::user::domain::repository::UserRepository;
 use crate::modules::user::domain::value_object::{Email, Username};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
@@ -33,6 +34,7 @@ fn spawn_audit_log(
     old_values: Option<&User>,
     new_values: Option<&User>,
 ) {
+    let ctx = current_request_context();
     let log = AuditTrailLog {
         id: 0,
         user_id: Some(user_id),
@@ -41,8 +43,8 @@ fn spawn_audit_log(
         entity_id: Some(key.to_string()),
         old_values: old_values.and_then(|s| serde_json::to_value(s).ok()),
         new_values: new_values.and_then(|s| serde_json::to_value(s).ok()),
-        ip_address: None,
-        user_agent: None,
+        ip_address: ctx.ip_address,
+        user_agent: ctx.user_agent,
         description: Some(format!("user {user_id} update data user {key}")),
         created_at: Utc::now(),
     };
