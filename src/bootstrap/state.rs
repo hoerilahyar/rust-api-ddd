@@ -150,6 +150,7 @@ impl AppState {
             ));
 
         let file_service: Arc<dyn FileService> = Arc::new(FileServiceImpl::new(
+            audit_trail_log_repo.clone(),
             file_repo,
             file_storage,
             config.storage.max_upload_bytes,

@@ -46,7 +46,13 @@ pub async fn upload_file(
 
         let file = state
             .file_service
-            .upload(Some(claims.sub), original_name, mime_type, bytes)
+            .upload(
+                Some(claims.sub),
+                original_name,
+                mime_type,
+                bytes,
+                claims.sub,
+            )
             .await?;
 
         return Ok(ApiResponse::new("file uploaded", FileResponse::from(file)).created());
@@ -91,7 +97,10 @@ pub async fn download_file(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "file.read")?;
 
-    let (file, handle) = state.file_service.open_for_download(uuid).await?;
+    let (file, handle) = state
+        .file_service
+        .open_for_download(uuid, claims.sub)
+        .await?;
     let stream = ReaderStream::new(handle);
     let body = Body::from_stream(stream);
 
@@ -117,6 +126,6 @@ pub async fn delete_file(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "file.delete")?;
 
-    state.file_service.delete(uuid).await?;
+    state.file_service.delete(uuid, claims.sub).await?;
     Ok(ApiResponse::<()>::message("file deleted"))
 }

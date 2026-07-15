@@ -15,6 +15,7 @@ pub trait FileService: Send + Sync {
         original_name: String,
         mime_type: String,
         bytes: Bytes,
+        actor_id: i32,
     ) -> Result<FileAsset, AppError>;
 
     async fn list(&self, pagination: &PaginationParams) -> Result<(Vec<FileAsset>, i64), AppError>;
@@ -23,7 +24,11 @@ pub trait FileService: Send + Sync {
 
     /// Returns the metadata plus an open handle to the bytes, ready to be
     /// streamed straight into the HTTP response body.
-    async fn open_for_download(&self, uuid: Uuid) -> Result<(FileAsset, File), AppError>;
+    async fn open_for_download(
+        &self,
+        uuid: Uuid,
+        actor_id: i32,
+    ) -> Result<(FileAsset, File), AppError>;
 
-    async fn delete(&self, uuid: Uuid) -> Result<(), AppError>;
+    async fn delete(&self, uuid: Uuid, actor_id: i32) -> Result<(), AppError>;
 }
