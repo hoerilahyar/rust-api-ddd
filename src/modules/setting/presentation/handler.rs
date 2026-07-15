@@ -57,6 +57,6 @@ pub async fn delete_setting(
     Path(key): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "settings.manage")?;
-    state.setting_service.delete(&key).await?;
+    state.setting_service.delete(&key, claims.sub).await?;
     Ok(ApiResponse::message("setting deleted"))
 }

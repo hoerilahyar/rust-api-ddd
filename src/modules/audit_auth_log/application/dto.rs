@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 
-use crate::modules::audit_log::domain::LoginLog;
+use crate::modules::audit_auth_log::domain::LoginLog;
 use crate::shared::contracts::LoginStatus;
 
 #[derive(Debug, Serialize)]

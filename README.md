@@ -22,7 +22,7 @@ src/
 ```
 
 Each module follows `domain -> application -> infrastructure -> presentation`.
-`shared::contracts` (`UserReader`, `AuditRecorder`) is what lets `auth` read user
+`shared::contracts` (`UserReader`, `AuditAuthRecorder`) is what lets `auth` read user
 data and write login logs without depending on `user`'s persistence types directly.
 
 > **Naming note**: `user_repository_mysql.rs` and `auth_repository_mysql.rs` are

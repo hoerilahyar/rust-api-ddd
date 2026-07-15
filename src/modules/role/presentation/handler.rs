@@ -53,7 +53,7 @@ pub async fn create_role(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "role.manage")?;
 
-    let role = state.role_service.create(payload).await?;
+    let role = state.role_service.create(payload, claims.sub).await?;
     Ok(ApiResponse::new("role created", RoleResponse::from(role)).created())
 }
 
@@ -65,7 +65,7 @@ pub async fn update_role(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "role.manage")?;
 
-    let role = state.role_service.update(id, payload).await?;
+    let role = state.role_service.update(id, payload, claims.sub).await?;
     Ok(ApiResponse::new("role updated", RoleResponse::from(role)))
 }
 
@@ -76,7 +76,7 @@ pub async fn delete_role(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "role.manage")?;
 
-    state.role_service.delete(id).await?;
+    state.role_service.delete(id, claims.sub).await?;
     Ok(ApiResponse::message("role deleted"))
 }
 

@@ -14,14 +14,14 @@ use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::domain::repository::AuthRepository;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
 use crate::shared::contracts::{
-    AuditRecorder, LoginAttempt, LoginStatus, UserAuthProjection, UserReader,
+    AuditAuthRecorder, LoginAttempt, LoginStatus, UserAuthProjection, UserReader,
 };
 use crate::shared::errors::AppError;
 
 pub struct AuthServiceImpl {
     auth_repo: Arc<dyn AuthRepository>,
     user_reader: Arc<dyn UserReader>,
-    audit: Arc<dyn AuditRecorder>,
+    audit: Arc<dyn AuditAuthRecorder>,
     jwt: Arc<JwtService>,
 }
 
@@ -45,7 +45,7 @@ impl AuthServiceImpl {
     pub fn new(
         auth_repo: Arc<dyn AuthRepository>,
         user_reader: Arc<dyn UserReader>,
-        audit: Arc<dyn AuditRecorder>,
+        audit: Arc<dyn AuditAuthRecorder>,
         jwt: Arc<JwtService>,
     ) -> Self {
         Self {

@@ -52,7 +52,7 @@ pub async fn create_user(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "user.manage")?;
 
-    let user = state.user_service.create(payload).await?;
+    let user = state.user_service.create(payload, claims.sub).await?;
     Ok(ApiResponse::new("user created", UserResponse::from(user)).created())
 }
 
@@ -64,7 +64,7 @@ pub async fn update_user(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "user.manage")?;
 
-    let user = state.user_service.update(id, payload).await?;
+    let user = state.user_service.update(id, payload, claims.sub).await?;
     Ok(ApiResponse::new("user updated", UserResponse::from(user)))
 }
 
@@ -75,7 +75,12 @@ pub async fn change_my_password(
 ) -> Result<impl IntoResponse, AppError> {
     state
         .user_service
-        .change_password(claims.sub, &payload.current_password, &payload.new_password)
+        .change_password(
+            claims.sub,
+            &payload.current_password,
+            &payload.new_password,
+            claims.sub,
+        )
         .await?;
 
     Ok(ApiResponse::message("password changed"))
@@ -88,7 +93,7 @@ pub async fn delete_user(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "user.manage")?;
 
-    state.user_service.delete(id).await?;
+    state.user_service.delete(id, claims.sub).await?;
     Ok(ApiResponse::message("user deleted"))
 }
 
@@ -102,7 +107,7 @@ pub async fn assign_role(
 
     state
         .user_service
-        .assign_role(id, &payload.role, Some(claims.sub))
+        .assign_role(id, &payload.role, Some(claims.sub), claims.sub)
         .await?;
 
     Ok(ApiResponse::message("role assigned"))
@@ -115,6 +120,9 @@ pub async fn revoke_role(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "user.manage")?;
 
-    state.user_service.revoke_role(id, &role).await?;
+    state
+        .user_service
+        .revoke_role(id, &role, claims.sub)
+        .await?;
     Ok(ApiResponse::message("role revoked"))
 }

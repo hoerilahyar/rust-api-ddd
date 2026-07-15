@@ -34,7 +34,7 @@ fn user_agent(headers: &HeaderMap) -> Option<String> {
 /// `/auth/*` routes are public (no `require_auth` layer), so they never pass
 /// through `activity_log_middleware` -- that middleware only fires *inside*
 /// `require_auth`, once `Claims` are already in the request's extensions.
-/// `login` itself is already covered by `AuditRecorder` / `user_login_logs`
+/// `login` itself is already covered by `AuditAuthRecorder` / `user_login_logs`
 /// (see `auth_service.login`); this covers the remaining actions
 /// (`refresh`, `logout`, `forgot_password`, `reset_password`) so every
 /// security-sensitive auth action ends up in `activity_logs` too, same as

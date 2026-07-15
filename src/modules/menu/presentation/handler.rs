@@ -72,7 +72,7 @@ pub async fn create_menu(
     ValidatedJson(payload): ValidatedJson<CreateMenuRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "menu.manage")?;
-    let menu = state.menu_service.create(payload).await?;
+    let menu = state.menu_service.create(payload, claims.sub).await?;
     Ok(ApiResponse::new("menu created", MenuResponse::from(menu)).created())
 }
 
@@ -83,7 +83,7 @@ pub async fn update_menu(
     ValidatedJson(payload): ValidatedJson<UpdateMenuRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "menu.manage")?;
-    let menu = state.menu_service.update(id, payload).await?;
+    let menu = state.menu_service.update(id, payload, claims.sub).await?;
     Ok(ApiResponse::new("menu updated", MenuResponse::from(menu)))
 }
 
@@ -93,7 +93,7 @@ pub async fn delete_menu(
     Path(id): Path<i32>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "menu.manage")?;
-    state.menu_service.delete(id).await?;
+    state.menu_service.delete(id, claims.sub).await?;
     Ok(ApiResponse::message("menu deleted"))
 }
 

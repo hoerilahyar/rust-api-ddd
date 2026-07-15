@@ -4,7 +4,7 @@ use serde::Serialize;
 use crate::shared::contracts::LoginStatus;
 
 /// Read-only projection of the `user_login_logs` table. Rows are only ever
-/// written by `shared::contracts::AuditRecorder` (see the `auth` module);
+/// written by `shared::contracts::AuditAuthRecorder` (see the `auth` module);
 /// this module exists purely to list/inspect what's already there.
 #[derive(Debug, Clone, Serialize)]
 pub struct LoginLog {

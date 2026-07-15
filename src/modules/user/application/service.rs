@@ -9,10 +9,32 @@ use crate::shared::errors::AppError;
 pub trait UserService: Send + Sync {
     async fn get_by_id(&self, id: i32) -> Result<User, AppError>;
     async fn list(&self, pagination: &PaginationParams) -> Result<(Vec<User>, i64), AppError>;
-    async fn create(&self, req: CreateUserRequest) -> Result<User, AppError>;
-    async fn update(&self, id: i32, req: UpdateUserRequest) -> Result<User, AppError>;
-    async fn change_password(&self, id: i32, current_password: &str, new_password: &str) -> Result<(), AppError>;
-    async fn delete(&self, id: i32) -> Result<(), AppError>;
-    async fn assign_role(&self, user_id: i32, role_name: &str, assigned_by: Option<i32>) -> Result<(), AppError>;
-    async fn revoke_role(&self, user_id: i32, role_name: &str) -> Result<(), AppError>;
+    async fn create(&self, req: CreateUserRequest, actor_id: i32) -> Result<User, AppError>;
+    async fn update(
+        &self,
+        id: i32,
+        req: UpdateUserRequest,
+        actor_id: i32,
+    ) -> Result<User, AppError>;
+    async fn change_password(
+        &self,
+        id: i32,
+        current_password: &str,
+        new_password: &str,
+        actor_id: i32,
+    ) -> Result<(), AppError>;
+    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
+    async fn assign_role(
+        &self,
+        user_id: i32,
+        role_name: &str,
+        assigned_by: Option<i32>,
+        actor_id: i32,
+    ) -> Result<(), AppError>;
+    async fn revoke_role(
+        &self,
+        user_id: i32,
+        role_name: &str,
+        actor_id: i32,
+    ) -> Result<(), AppError>;
 }

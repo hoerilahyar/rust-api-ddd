@@ -7,7 +7,7 @@ use crate::shared::errors::AppError;
 
 /// Persistence contract for everything auth owns: refresh tokens and
 /// password reset tokens. Login-attempt auditing lives in the separate,
-/// cross-module `shared::contracts::AuditRecorder` trait.
+/// cross-module `shared::contracts::AuditAuthRecorder` trait.
 #[async_trait]
 pub trait AuthRepository: Send + Sync {
     async fn store_refresh_token(
@@ -17,7 +17,10 @@ pub trait AuthRepository: Send + Sync {
         expires_at: DateTime<Utc>,
     ) -> Result<RefreshToken, AppError>;
 
-    async fn find_refresh_token_by_hash(&self, token_hash: &str) -> Result<Option<RefreshToken>, AppError>;
+    async fn find_refresh_token_by_hash(
+        &self,
+        token_hash: &str,
+    ) -> Result<Option<RefreshToken>, AppError>;
 
     async fn revoke_refresh_token(&self, id: Uuid) -> Result<(), AppError>;
 

@@ -1,9 +1,11 @@
 CREATE TABLE audit_trail_logs (
-    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    uuid UUID       NOT NULL DEFAULT gen_random_uuid(),
     user_id         INT NULL,
     action          VARCHAR(50)  NOT NULL,
     entity_type     VARCHAR(100) NOT NULL,
-    entity_id       UUID NULL,
+    entity_id       TEXT NULL,
     old_values      JSONB NULL,
     new_values      JSONB NULL,
     ip_address      VARCHAR(45) NULL,

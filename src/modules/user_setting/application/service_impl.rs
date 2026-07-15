@@ -3,13 +3,53 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
+use chrono::Utc;
+
+use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
 use crate::modules::user_setting::application::dto::UpsertUserSettingRequest;
 use crate::modules::user_setting::application::service::UserSettingService;
 use crate::modules::user_setting::domain::{
     UserSetting, UserSettingDomainError, UserSettingRepository,
 };
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::errors::AppError;
+
+const ENTITY_TYPE: &str = "user_setting";
+
+/// Fires an audit trail write in the background so a slow/unavailable audit
+/// sink never blocks or fails the actual setting mutation. `user_id` is both
+/// the subject and the actor here -- every method in this module is
+/// self-service, scoped to the caller's own `Claims::sub`.
+fn spawn_audit_log(
+    audit: Arc<dyn AuditTrailRecorder>,
+    user_id: i32,
+    action: &'static str,
+    key: &str,
+    old_values: Option<&UserSetting>,
+    new_values: Option<&UserSetting>,
+) {
+    let log = AuditTrailLog {
+        id: 0,
+        user_id: Some(user_id),
+        action: action.to_string(),
+        entity_type: ENTITY_TYPE.to_string(),
+        entity_id: None,
+        old_values: old_values.and_then(|s| serde_json::to_value(s).ok()),
+        new_values: new_values.and_then(|s| serde_json::to_value(s).ok()),
+        ip_address: None,
+        user_agent: None,
+        description: Some(format!("user {user_id} setting key {key}")),
+        created_at: Utc::now(),
+    };
+
+    let key = key.to_string();
+    tokio::spawn(async move {
+        if let Err(err) = audit.record_audit_trail_log(log).await {
+            tracing::error!(error = ?err, user_id, key, action, "failed to record user setting audit trail log");
+        }
+    });
+}
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
 
@@ -22,13 +62,18 @@ fn item_cache_key(user_id: i32, key: &str) -> String {
 }
 
 pub struct UserSettingServiceImpl {
+    audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn UserSettingRepository>,
     cache: Arc<RedisCacheRepository>,
 }
 
 impl UserSettingServiceImpl {
-    pub fn new(repo: Arc<dyn UserSettingRepository>, cache: Arc<RedisCacheRepository>) -> Self {
-        Self { repo, cache }
+    pub fn new(
+        audit: Arc<dyn AuditTrailRecorder>,
+        repo: Arc<dyn UserSettingRepository>,
+        cache: Arc<RedisCacheRepository>,
+    ) -> Self {
+        Self { audit, repo, cache }
     }
 
     async fn invalidate(&self, user_id: i32, key: &str) -> Result<(), AppError> {
@@ -77,13 +122,37 @@ impl UserSettingService for UserSettingServiceImpl {
             return Err(UserSettingDomainError::InvalidKey.into());
         }
 
+        let old = self.repo.find(user_id, key).await.ok().flatten();
+
         let setting = self.repo.upsert(user_id, key, req.value.as_deref()).await?;
+
+        spawn_audit_log(
+            self.audit.clone(),
+            user_id,
+            "user_setting.upsert",
+            key,
+            old.as_ref(),
+            Some(&setting),
+        );
+
         self.invalidate(user_id, key).await?;
         Ok(setting)
     }
 
     async fn delete(&self, user_id: i32, key: &str) -> Result<(), AppError> {
+        let old = self.repo.find(user_id, key).await.ok().flatten();
+
         self.repo.delete(user_id, key).await?;
+
+        spawn_audit_log(
+            self.audit.clone(),
+            user_id,
+            "user_setting.delete",
+            key,
+            old.as_ref(),
+            None,
+        );
+
         self.invalidate(user_id, key).await?;
         Ok(())
     }

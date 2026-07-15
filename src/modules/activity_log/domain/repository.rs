@@ -9,7 +9,7 @@ use crate::shared::errors::AppError;
 /// read operations and must never modify or delete historical records --
 /// writes go through `shared::contracts::ActivityRecorder` instead, so this
 /// module can never tamper with the trail it's meant to expose (same split
-/// as `audit::domain::AuditLogRepository` / `shared::contracts::AuditRecorder`).
+/// as `audit::domain::AuditLogRepository` / `shared::contracts::AuditAuthRecorder`).
 #[async_trait]
 pub trait ActivityLogRepository: Send + Sync {
     async fn list(&self, query: &ActivityLogQuery) -> Result<(Vec<ActivityLog>, i64), AppError>;

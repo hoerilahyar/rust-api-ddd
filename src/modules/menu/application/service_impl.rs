@@ -4,12 +4,51 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
+use chrono::Utc;
+
+use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
 use crate::modules::menu::application::dto::{CreateMenuRequest, MenuTreeNode, UpdateMenuRequest};
 use crate::modules::menu::application::service::MenuService;
 use crate::modules::menu::domain::{Menu, MenuDomainError, MenuRepository};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
+
+const ENTITY_TYPE: &str = "menu";
+
+/// Fires an audit trail write in the background so a slow/unavailable audit
+/// sink never blocks or fails the actual menu mutation. Errors are logged,
+/// not propagated -- consistent with how `activity_recorder` calls are
+/// fire-and-forget elsewhere in the codebase.
+fn spawn_audit_log(
+    audit: Arc<dyn AuditTrailRecorder>,
+    actor_id: i32,
+    action: &'static str,
+    menu_id: i32,
+    old_values: Option<&Menu>,
+    new_values: Option<&Menu>,
+) {
+    let log = AuditTrailLog {
+        id: 0,
+        user_id: Some(actor_id),
+        action: action.to_string(),
+        entity_type: ENTITY_TYPE.to_string(),
+        entity_id: None,
+        old_values: old_values.and_then(|m| serde_json::to_value(m).ok()),
+        new_values: new_values.and_then(|m| serde_json::to_value(m).ok()),
+        ip_address: None,
+        user_agent: None,
+        description: Some(format!("menu id {menu_id}")),
+        created_at: Utc::now(),
+    };
+
+    tokio::spawn(async move {
+        if let Err(err) = audit.record_audit_trail_log(log).await {
+            tracing::error!(error = ?err, menu_id, action, "failed to record menu audit trail log");
+        }
+    });
+}
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
 
@@ -18,13 +57,18 @@ fn cache_key(id: i32) -> String {
 }
 
 pub struct MenuServiceImpl {
+    audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn MenuRepository>,
     cache: Arc<RedisCacheRepository>,
 }
 
 impl MenuServiceImpl {
-    pub fn new(repo: Arc<dyn MenuRepository>, cache: Arc<RedisCacheRepository>) -> Self {
-        Self { repo, cache }
+    pub fn new(
+        audit: Arc<dyn AuditTrailRecorder>,
+        repo: Arc<dyn MenuRepository>,
+        cache: Arc<RedisCacheRepository>,
+    ) -> Self {
+        Self { audit, repo, cache }
     }
 }
 
@@ -73,7 +117,10 @@ fn build_tree(menus: Vec<Menu>) -> Vec<MenuTreeNode> {
     }
 
     roots.sort_by_key(|r| r.order_index);
-    roots.into_iter().map(|r| attach(r, &mut children)).collect()
+    roots
+        .into_iter()
+        .map(|r| attach(r, &mut children))
+        .collect()
 }
 
 /// Keeps only active menus the caller can see: either the menu has no
@@ -133,12 +180,15 @@ impl MenuService for MenuServiceImpl {
         Ok(build_tree(all))
     }
 
-    async fn visible_tree(&self, user_permissions: &[String]) -> Result<Vec<MenuTreeNode>, AppError> {
+    async fn visible_tree(
+        &self,
+        user_permissions: &[String],
+    ) -> Result<Vec<MenuTreeNode>, AppError> {
         let all = self.repo.list_all().await?;
         Ok(build_tree(filter_visible(all, user_permissions)))
     }
 
-    async fn create(&self, req: CreateMenuRequest) -> Result<Menu, AppError> {
+    async fn create(&self, req: CreateMenuRequest, actor_id: i32) -> Result<Menu, AppError> {
         if let Some(parent_id) = req.parent_id {
             self.repo
                 .find_by_id(parent_id)
@@ -162,10 +212,24 @@ impl MenuService for MenuServiceImpl {
             )
             .await?;
 
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "menu.create",
+            menu.id,
+            None,
+            Some(&menu),
+        );
+
         Ok(menu)
     }
 
-    async fn update(&self, id: i32, req: UpdateMenuRequest) -> Result<Menu, AppError> {
+    async fn update(
+        &self,
+        id: i32,
+        req: UpdateMenuRequest,
+        actor_id: i32,
+    ) -> Result<Menu, AppError> {
         if let Some(Some(new_parent)) = req.parent_id {
             let all = self.repo.list_all().await?;
             if !all.iter().any(|m| m.id == new_parent) {
@@ -175,6 +239,12 @@ impl MenuService for MenuServiceImpl {
                 return Err(MenuDomainError::CircularParent.into());
             }
         }
+
+        let existing = self
+            .repo
+            .find_by_id(id)
+            .await?
+            .ok_or(MenuDomainError::NotFound)?;
 
         let menu = self
             .repo
@@ -189,12 +259,37 @@ impl MenuService for MenuServiceImpl {
             )
             .await?;
 
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "menu.update",
+            id,
+            Some(&existing),
+            Some(&menu),
+        );
+
         self.cache.delete(&cache_key(id)).await?;
         Ok(menu)
     }
 
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
+    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError> {
+        let existing = self
+            .repo
+            .find_by_id(id)
+            .await?
+            .ok_or(MenuDomainError::NotFound)?;
+
         self.repo.delete(id).await?;
+
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "menu.delete",
+            id,
+            Some(&existing),
+            None,
+        );
+
         self.cache.delete(&cache_key(id)).await?;
         Ok(())
     }
@@ -204,7 +299,9 @@ impl MenuService for MenuServiceImpl {
             .repo
             .find_permission_by_name(permission_name)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("permission '{permission_name}' not found")))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!("permission '{permission_name}' not found"))
+            })?;
 
         self.repo.assign_permission(menu_id, permission_id).await?;
         self.cache.delete(&cache_key(menu_id)).await?;
@@ -216,7 +313,9 @@ impl MenuService for MenuServiceImpl {
             .repo
             .find_permission_by_name(permission_name)
             .await?
-            .ok_or_else(|| AppError::NotFound(format!("permission '{permission_name}' not found")))?;
+            .ok_or_else(|| {
+                AppError::NotFound(format!("permission '{permission_name}' not found"))
+            })?;
 
         self.repo.revoke_permission(menu_id, permission_id).await?;
         self.cache.delete(&cache_key(menu_id)).await?;
@@ -285,11 +384,7 @@ mod tests {
 
     #[test]
     fn build_tree_nests_multiple_levels_deep() {
-        let menus = vec![
-            menu(1, None, 0),
-            menu(2, Some(1), 0),
-            menu(3, Some(2), 0),
-        ];
+        let menus = vec![menu(1, None, 0), menu(2, Some(1), 0), menu(3, Some(2), 0)];
 
         let tree = build_tree(menus);
 

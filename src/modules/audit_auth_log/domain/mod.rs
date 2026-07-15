@@ -3,5 +3,5 @@ pub mod repository;
 pub mod value_object;
 
 pub use entity::LoginLog;
-pub use repository::AuditLogRepository;
+pub use repository::AuditAuthLogRepository;
 pub use value_object::LoginLogQuery;

@@ -3,12 +3,49 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 
+use chrono::Utc;
+
+use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
 use crate::modules::role::application::service::RoleService;
 use crate::modules::role::application::{CreateRoleRequest, UpdateRoleRequest};
 use crate::modules::role::domain::{Name, Role, RoleRepository};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
+use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
+
+const ENTITY_TYPE: &str = "role";
+
+/// Fires an audit trail write in the background so a slow/unavailable audit
+/// sink never blocks or fails the actual role mutation.
+fn spawn_audit_log(
+    audit: Arc<dyn AuditTrailRecorder>,
+    actor_id: i32,
+    action: &'static str,
+    role_id: i32,
+    old_values: Option<&Role>,
+    new_values: Option<&Role>,
+) {
+    let log = AuditTrailLog {
+        id: 0,
+        user_id: Some(actor_id),
+        action: action.to_string(),
+        entity_type: ENTITY_TYPE.to_string(),
+        entity_id: None,
+        old_values: old_values.and_then(|r| serde_json::to_value(r).ok()),
+        new_values: new_values.and_then(|r| serde_json::to_value(r).ok()),
+        ip_address: None,
+        user_agent: None,
+        description: Some(format!("role id {role_id}")),
+        created_at: Utc::now(),
+    };
+
+    tokio::spawn(async move {
+        if let Err(err) = audit.record_audit_trail_log(log).await {
+            tracing::error!(error = ?err, role_id, action, "failed to record role audit trail log");
+        }
+    });
+}
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
 
@@ -17,13 +54,18 @@ fn cache_key(id: i32) -> String {
 }
 
 pub struct RoleServiceImpl {
+    audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn RoleRepository>,
     cache: Arc<RedisCacheRepository>,
 }
 
 impl RoleServiceImpl {
-    pub fn new(repo: Arc<dyn RoleRepository>, cache: Arc<RedisCacheRepository>) -> Self {
-        Self { repo, cache }
+    pub fn new(
+        audit: Arc<dyn AuditTrailRecorder>,
+        repo: Arc<dyn RoleRepository>,
+        cache: Arc<RedisCacheRepository>,
+    ) -> Self {
+        Self { audit, repo, cache }
     }
 }
 
@@ -49,7 +91,7 @@ impl RoleService for RoleServiceImpl {
         self.repo.list(pagination).await
     }
 
-    async fn create(&self, req: CreateRoleRequest) -> Result<Role, AppError> {
+    async fn create(&self, req: CreateRoleRequest, actor_id: i32) -> Result<Role, AppError> {
         Name::parse(&req.name)?;
 
         if self.repo.find_by_name(&req.name).await?.is_some() {
@@ -61,9 +103,16 @@ impl RoleService for RoleServiceImpl {
             .create(&req.name, req.description.as_deref())
             .await?;
 
+        spawn_audit_log(self.audit.clone(), actor_id, "role.create", role.id, None, Some(&role));
+
         Ok(role)
     }
-    async fn update(&self, id: i32, req: UpdateRoleRequest) -> Result<Role, AppError> {
+    async fn update(
+        &self,
+        id: i32,
+        req: UpdateRoleRequest,
+        actor_id: i32,
+    ) -> Result<Role, AppError> {
         if let Some(name) = &req.name {
             Name::parse(name)?;
             if let Some(existing) = self.repo.find_by_name(name).await? {
@@ -73,17 +122,41 @@ impl RoleService for RoleServiceImpl {
             }
         }
 
+        let existing = self
+            .repo
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("role not found".to_string()))?;
+
         let role = self
             .repo
             .update(id, req.name.as_deref(), req.description.as_deref())
             .await?;
 
+        spawn_audit_log(
+            self.audit.clone(),
+            actor_id,
+            "role.update",
+            id,
+            Some(&existing),
+            Some(&role),
+        );
+
         self.cache.delete(&cache_key(id)).await?;
         Ok(role)
     }
 
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
+    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError> {
+        let existing = self
+            .repo
+            .find_by_id(id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("role not found".to_string()))?;
+
         self.repo.delete(id).await?;
+
+        spawn_audit_log(self.audit.clone(), actor_id, "role.delete", id, Some(&existing), None);
+
         self.cache.delete(&cache_key(id)).await?;
         Ok(())
     }

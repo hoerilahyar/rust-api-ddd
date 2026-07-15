@@ -17,9 +17,9 @@ pub trait MenuService: Send + Sync {
     /// allowed to see (and only active menus).
     async fn visible_tree(&self, user_permissions: &[String]) -> Result<Vec<MenuTreeNode>, AppError>;
 
-    async fn create(&self, req: CreateMenuRequest) -> Result<Menu, AppError>;
-    async fn update(&self, id: i32, req: UpdateMenuRequest) -> Result<Menu, AppError>;
-    async fn delete(&self, id: i32) -> Result<(), AppError>;
+    async fn create(&self, req: CreateMenuRequest, actor_id: i32) -> Result<Menu, AppError>;
+    async fn update(&self, id: i32, req: UpdateMenuRequest, actor_id: i32) -> Result<Menu, AppError>;
+    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
 
     async fn assign_permission(&self, menu_id: i32, permission_name: &str) -> Result<(), AppError>;
     async fn revoke_permission(&self, menu_id: i32, permission_name: &str) -> Result<(), AppError>;

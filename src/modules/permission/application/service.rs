@@ -15,8 +15,13 @@ pub trait PermissionService: Send + Sync {
     async fn list(&self, pagination: &PaginationParams)
         -> Result<(Vec<Permission>, i64), AppError>;
 
-    async fn create(&self, req: CreatePermissionRequest) -> Result<Permission, AppError>;
-    async fn update(&self, id: i32, req: UpdatePermissionRequest) -> Result<Permission, AppError>;
+    async fn create(&self, req: CreatePermissionRequest, actor_id: i32) -> Result<Permission, AppError>;
+    async fn update(
+        &self,
+        id: i32,
+        req: UpdatePermissionRequest,
+        actor_id: i32,
+    ) -> Result<Permission, AppError>;
 
-    async fn delete(&self, id: i32) -> Result<(), AppError>;
+    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
 }

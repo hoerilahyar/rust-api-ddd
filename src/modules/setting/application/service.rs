@@ -18,5 +18,5 @@ pub trait SettingService: Send + Sync {
         updated_by: i32,
     ) -> Result<SystemSetting, AppError>;
 
-    async fn delete(&self, key: &str) -> Result<(), AppError>;
+    async fn delete(&self, key: &str, actor_id: i32) -> Result<(), AppError>;
 }

@@ -7,8 +7,12 @@ use sqlx::PgPool;
 use crate::bootstrap::config::AppConfig;
 use crate::modules::activity_log::application::{ActivityLogService, ActivityLogServiceImpl};
 use crate::modules::activity_log::infrastructure::persistence::ActivityLogRepositoryPg;
-use crate::modules::audit_log::application::{AuditLogService, AuditLogServiceImpl};
-use crate::modules::audit_log::infrastructure::persistence::AuditLogRepositoryPg;
+use crate::modules::audit_auth_log::application::{AuditAuthLogService, AuditAuthLogServiceImpl};
+use crate::modules::audit_auth_log::infrastructure::persistence::AuditAuthLogRepositoryPg;
+use crate::modules::audit_trail_log::application::{
+    AuditTrailLogService, AuditTrailLogServiceImpl,
+};
+use crate::modules::audit_trail_log::infrastructure::persistence::AuditTrailLogRepositoryPg;
 use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
@@ -46,7 +50,8 @@ pub struct AppState {
     pub auth_service: Arc<dyn AuthService>,
     pub role_service: Arc<dyn RoleService>,
     pub permission_service: Arc<dyn PermissionService>,
-    pub audit_log_service: Arc<dyn AuditLogService>,
+    pub audit_auth_log_service: Arc<dyn AuditAuthLogService>,
+    pub audit_trail_log_service: Arc<dyn AuditTrailLogService>,
     pub activity_log_service: Arc<dyn ActivityLogService>,
     /// Injected into other modules' services so they can log CRUD/view
     /// activity without depending on `activity_log`'s persistence layer.
@@ -72,8 +77,10 @@ impl AppState {
         let role_repo: Arc<RoleRepositoryPg> = Arc::new(RoleRepositoryPg::new(db.clone()));
         let permission_repo: Arc<PermissionRepositoryPg> =
             Arc::new(PermissionRepositoryPg::new(db.clone()));
-        let audit_log_repo: Arc<AuditLogRepositoryPg> =
-            Arc::new(AuditLogRepositoryPg::new(db.clone()));
+        let audit_auth_log_repo: Arc<AuditAuthLogRepositoryPg> =
+            Arc::new(AuditAuthLogRepositoryPg::new(db.clone()));
+        let audit_trail_log_repo: Arc<AuditTrailLogRepositoryPg> =
+            Arc::new(AuditTrailLogRepositoryPg::new(db.clone()));
         let activity_log_repo: Arc<ActivityLogRepositoryPg> =
             Arc::new(ActivityLogRepositoryPg::new(db.clone()));
         let menu_repo: Arc<MenuRepositoryPg> = Arc::new(MenuRepositoryPg::new(db.clone()));
@@ -86,26 +93,36 @@ impl AppState {
                 .expect("failed to initialize local file storage directory"),
         );
 
-        let user_service: Arc<dyn UserService> =
-            Arc::new(UserServiceImpl::new(user_repo.clone(), cache.clone()));
+        let user_service: Arc<dyn UserService> = Arc::new(UserServiceImpl::new(
+            audit_trail_log_repo.clone(),
+            user_repo.clone(),
+            cache.clone(),
+        ));
 
         let auth_service: Arc<dyn AuthService> = Arc::new(AuthServiceImpl::new(
             auth_repo.clone(),
-            user_repo, // implements shared::contracts::UserReader
-            auth_repo, // implements shared::contracts::AuditRecorder
+            user_repo,
+            audit_auth_log_repo.clone(),
             jwt.clone(),
         ));
 
-        let role_service: Arc<dyn RoleService> =
-            Arc::new(RoleServiceImpl::new(role_repo.clone(), cache.clone()));
+        let role_service: Arc<dyn RoleService> = Arc::new(RoleServiceImpl::new(
+            audit_trail_log_repo.clone(),
+            role_repo.clone(),
+            cache.clone(),
+        ));
 
         let permission_service: Arc<dyn PermissionService> = Arc::new(PermissionServiceImpl::new(
+            audit_trail_log_repo.clone(),
             permission_repo.clone(),
             cache.clone(),
         ));
 
-        let audit_log_service: Arc<dyn AuditLogService> =
-            Arc::new(AuditLogServiceImpl::new(audit_log_repo));
+        let audit_auth_log_service: Arc<dyn AuditAuthLogService> =
+            Arc::new(AuditAuthLogServiceImpl::new(audit_auth_log_repo));
+
+        let audit_trail_log_service: Arc<dyn AuditTrailLogService> =
+            Arc::new(AuditTrailLogServiceImpl::new(audit_trail_log_repo.clone()));
 
         let activity_log_service: Arc<dyn ActivityLogService> =
             Arc::new(ActivityLogServiceImpl::new(activity_log_repo.clone()));
@@ -113,15 +130,24 @@ impl AppState {
         // (above) and the write-only `ActivityRecorder` contract (below).
         let activity_recorder: Arc<dyn ActivityRecorder> = activity_log_repo;
 
-        let menu_service: Arc<dyn MenuService> =
-            Arc::new(MenuServiceImpl::new(menu_repo, cache.clone()));
+        let menu_service: Arc<dyn MenuService> = Arc::new(MenuServiceImpl::new(
+            audit_trail_log_repo.clone(),
+            menu_repo,
+            cache.clone(),
+        ));
 
-        let setting_service: Arc<dyn SettingService> =
-            Arc::new(SettingServiceImpl::new(setting_repo, cache.clone()));
+        let setting_service: Arc<dyn SettingService> = Arc::new(SettingServiceImpl::new(
+            audit_trail_log_repo.clone(),
+            setting_repo,
+            cache.clone(),
+        ));
 
-        let user_setting_service: Arc<dyn UserSettingService> = Arc::new(
-            UserSettingServiceImpl::new(user_setting_repo, cache.clone()),
-        );
+        let user_setting_service: Arc<dyn UserSettingService> =
+            Arc::new(UserSettingServiceImpl::new(
+                audit_trail_log_repo.clone(),
+                user_setting_repo,
+                cache.clone(),
+            ));
 
         let file_service: Arc<dyn FileService> = Arc::new(FileServiceImpl::new(
             file_repo,
@@ -139,7 +165,8 @@ impl AppState {
             auth_service,
             role_service,
             permission_service,
-            audit_log_service,
+            audit_auth_log_service,
+            audit_trail_log_service,
             activity_log_service,
             activity_recorder,
             menu_service,

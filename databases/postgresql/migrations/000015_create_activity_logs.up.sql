@@ -1,5 +1,5 @@
 -- General-purpose, append-only activity trail across every module (not just
--- login attempts -- see user_login_logs / AuditRecorder for that narrower case).
+-- login attempts -- see user_login_logs / AuditAuthRecorder for that narrower case).
 -- ip_address is VARCHAR, matching user_login_logs, so it binds as plain TEXT
 -- with sqlx (the "postgres" feature does not include the "ipnetwork" crate
 -- needed to bind Rust values against a native INET column).

@@ -5,10 +5,9 @@ use uuid::Uuid;
 
 use crate::modules::auth::domain::entity::{PasswordResetToken, RefreshToken};
 use crate::modules::auth::domain::repository::AuthRepository;
-use crate::shared::contracts::{AuditRecorder, LoginAttempt};
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`AuthRepository`] + [`AuditRecorder`],
+/// SQLx/Postgres implementation of [`AuthRepository`] + [`AuditAuthRecorder`],
 /// targeting the schema defined by the migrations under
 /// `databases/postgresql`.
 #[derive(Clone)]
@@ -137,26 +136,6 @@ impl AuthRepository for AuthRepositoryPg {
             "UPDATE password_reset_tokens SET used_at = now() WHERE id = $1 AND used_at IS NULL",
         )
         .bind(id)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl AuditRecorder for AuthRepositoryPg {
-    async fn record_login_attempt(&self, attempt: LoginAttempt) -> Result<(), AppError> {
-        sqlx::query(
-            r#"
-            INSERT INTO user_login_logs (user_id, email_attempted, ip_address, user_agent, status)
-            VALUES ($1, $2, $3, $4, $5)
-            "#,
-        )
-        .bind(attempt.user_id)
-        .bind(attempt.email_attempted)
-        .bind(attempt.ip_address)
-        .bind(attempt.user_agent)
-        .bind(attempt.status.as_str())
         .execute(&self.pool)
         .await?;
         Ok(())

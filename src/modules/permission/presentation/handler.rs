@@ -56,7 +56,7 @@ pub async fn create_permission(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "permission.manage")?;
 
-    let permission = state.permission_service.create(payload).await?;
+    let permission = state.permission_service.create(payload, claims.sub).await?;
     Ok(ApiResponse::new("permission created", PermissionResponse::from(permission)).created())
 }
 
@@ -68,7 +68,7 @@ pub async fn update_permission(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "permission.manage")?;
 
-    let permission = state.permission_service.update(id, payload).await?;
+    let permission = state.permission_service.update(id, payload, claims.sub).await?;
     Ok(ApiResponse::new(
         "permission updated",
         PermissionResponse::from(permission),
@@ -82,6 +82,6 @@ pub async fn delete_permission(
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "permission.manage")?;
 
-    state.permission_service.delete(id).await?;
+    state.permission_service.delete(id, claims.sub).await?;
     Ok(ApiResponse::message("permission deleted"))
 }

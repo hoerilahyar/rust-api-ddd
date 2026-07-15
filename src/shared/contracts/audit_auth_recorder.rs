@@ -32,6 +32,7 @@ pub struct LoginAttempt {
 /// any module can record an auditable action against `user_login_logs`
 /// without depending on the auth module's persistence layer directly.
 #[async_trait]
-pub trait AuditRecorder: Send + Sync {
+pub trait AuditAuthRecorder: Send + Sync {
     async fn record_login_attempt(&self, attempt: LoginAttempt) -> Result<(), AppError>;
+    // async fn record_audit_trail_log(&self, log: AuditTrailLog) -> Result<(), AppError>;
 }

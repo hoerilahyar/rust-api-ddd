@@ -1,0 +1,3 @@
+pub mod audit_trail_log_repository_postgres;
+
+pub use audit_trail_log_repository_postgres::AuditTrailLogRepositoryPg;

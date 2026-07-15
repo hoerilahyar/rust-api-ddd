@@ -18,7 +18,7 @@ use crate::shared::middleware::rate_limiter::resolve_client_ip;
 
 /// Records one row in `activity_logs` for every request that reaches it, via
 /// `shared::contracts::ActivityRecorder` -- the generic counterpart to
-/// `AuditRecorder` (which only covers login attempts).
+/// `AuditAuthRecorder` (which only covers login attempts).
 ///
 /// **Must be layered *inside* `require_auth`** -- i.e. added to a router
 /// *before* the `require_auth` `route_layer` call, so it ends up as the

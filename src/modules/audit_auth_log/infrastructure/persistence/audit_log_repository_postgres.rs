@@ -1,18 +1,19 @@
 use async_trait::async_trait;
 use sqlx::{PgPool, Row};
 
-use crate::modules::audit_log::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
+use crate::modules::audit_auth_log::domain::{AuditAuthLogRepository, LoginLog, LoginLogQuery};
 use crate::shared::contracts::LoginStatus;
+use crate::shared::contracts::{AuditAuthRecorder, LoginAttempt};
 use crate::shared::errors::AppError;
 
-/// SQLx/Postgres implementation of [`AuditLogRepository`], targeting the
+/// SQLx/Postgres implementation of [`AuditAuthLogRepository`], targeting the
 /// schema defined by the migrations under `databases/postgresql`.
 #[derive(Clone)]
-pub struct AuditLogRepositoryPg {
+pub struct AuditAuthLogRepositoryPg {
     pool: PgPool,
 }
 
-impl AuditLogRepositoryPg {
+impl AuditAuthLogRepositoryPg {
     pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
@@ -36,7 +37,7 @@ impl AuditLogRepositoryPg {
 }
 
 #[async_trait]
-impl AuditLogRepository for AuditLogRepositoryPg {
+impl AuditAuthLogRepository for AuditAuthLogRepositoryPg {
     async fn list(&self, query: &LoginLogQuery) -> Result<(Vec<LoginLog>, i64), AppError> {
         let (_page, limit) = query.normalized();
         let offset = query.offset();
@@ -98,5 +99,25 @@ impl AuditLogRepository for AuditLogRepositoryPg {
             .await?;
 
         Ok(row.map(|r| Self::map_row(&r)))
+    }
+}
+
+#[async_trait]
+impl AuditAuthRecorder for AuditAuthLogRepositoryPg {
+    async fn record_login_attempt(&self, attempt: LoginAttempt) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            INSERT INTO user_login_logs (user_id, email_attempted, ip_address, user_agent, status)
+            VALUES ($1, $2, $3, $4, $5)
+            "#,
+        )
+        .bind(attempt.user_id)
+        .bind(attempt.email_attempted)
+        .bind(attempt.ip_address)
+        .bind(attempt.user_agent)
+        .bind(attempt.status.as_str())
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
 }

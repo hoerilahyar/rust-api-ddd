@@ -2,22 +2,22 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::modules::audit_log::application::service::AuditLogService;
-use crate::modules::audit_log::domain::{AuditLogRepository, LoginLog, LoginLogQuery};
+use crate::modules::audit_auth_log::application::service::AuditAuthLogService;
+use crate::modules::audit_auth_log::domain::{AuditAuthLogRepository, LoginLog, LoginLogQuery};
 use crate::shared::errors::AppError;
 
-pub struct AuditLogServiceImpl {
-    repo: Arc<dyn AuditLogRepository>,
+pub struct AuditAuthLogServiceImpl {
+    repo: Arc<dyn AuditAuthLogRepository>,
 }
 
-impl AuditLogServiceImpl {
-    pub fn new(repo: Arc<dyn AuditLogRepository>) -> Self {
+impl AuditAuthLogServiceImpl {
+    pub fn new(repo: Arc<dyn AuditAuthLogRepository>) -> Self {
         Self { repo }
     }
 }
 
 #[async_trait]
-impl AuditLogService for AuditLogServiceImpl {
+impl AuditAuthLogService for AuditAuthLogServiceImpl {
     async fn list(&self, query: &LoginLogQuery) -> Result<(Vec<LoginLog>, i64), AppError> {
         self.repo.list(query).await
     }
