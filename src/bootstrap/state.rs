@@ -37,6 +37,8 @@ use crate::modules::setting::infrastructure::persistence::SettingRepositoryPg;
 use crate::modules::user::application::service::UserService;
 use crate::modules::user::application::service_impl::UserServiceImpl;
 use crate::modules::user::infrastructure::persistence::UserRepositoryPg;
+use crate::modules::user_profile::application::{UserProfileService, UserProfileServiceImpl};
+use crate::modules::user_profile::infrastructure::persistence::UserProfileRepositoryPg;
 use crate::modules::user_setting::application::{UserSettingService, UserSettingServiceImpl};
 use crate::modules::user_setting::infrastructure::persistence::UserSettingRepositoryPg;
 use crate::shared::cache::RedisCacheRepository;
@@ -65,6 +67,7 @@ pub struct AppState {
     pub menu_service: Arc<dyn MenuService>,
     pub setting_service: Arc<dyn SettingService>,
     pub user_setting_service: Arc<dyn UserSettingService>,
+    pub user_profile_service: Arc<dyn UserProfileService>,
     pub file_service: Arc<dyn FileService>,
     pub master_group_service: Arc<dyn MasterGroupService>,
     pub master_item_service: Arc<dyn MasterItemService>,
@@ -98,6 +101,8 @@ impl AppState {
         let setting_repo: Arc<SettingRepositoryPg> = Arc::new(SettingRepositoryPg::new(db.clone()));
         let user_setting_repo: Arc<UserSettingRepositoryPg> =
             Arc::new(UserSettingRepositoryPg::new(db.clone()));
+        let user_profile_repo: Arc<UserProfileRepositoryPg> =
+            Arc::new(UserProfileRepositoryPg::new(db.clone()));
         let file_repo: Arc<FileRepositoryPg> = Arc::new(FileRepositoryPg::new(db.clone()));
         let file_storage = Arc::new(
             LocalFileStorage::new(config.storage.base_path.clone())
@@ -167,6 +172,13 @@ impl AppState {
                 cache.clone(),
             ));
 
+        let user_profile_service: Arc<dyn UserProfileService> =
+            Arc::new(UserProfileServiceImpl::new(
+                audit_trail_log_repo.clone(),
+                user_profile_repo,
+                cache.clone(),
+            ));
+
         let file_service: Arc<dyn FileService> = Arc::new(FileServiceImpl::new(
             audit_trail_log_repo.clone(),
             file_repo,
@@ -204,6 +216,7 @@ impl AppState {
             menu_service,
             setting_service,
             user_setting_service,
+            user_profile_service,
             file_service,
             master_group_service,
             master_item_service,

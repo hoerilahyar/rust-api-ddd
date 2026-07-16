@@ -1,0 +1,3 @@
+pub mod user_profile_repository_postgres;
+
+pub use user_profile_repository_postgres::UserProfileRepositoryPg;

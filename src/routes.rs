@@ -12,6 +12,7 @@ use crate::modules::permission::presentation::routes as permission_routes;
 use crate::modules::role::presentation::routes as role_routes;
 use crate::modules::setting::presentation::routes as setting_routes;
 use crate::modules::user::presentation::routes as user_routes;
+use crate::modules::user_profile::presentation::routes as user_profile_routes;
 use crate::modules::user_setting::presentation::routes as user_setting_routes;
 
 pub fn routes(state: AppState) -> Router<AppState> {
@@ -27,5 +28,6 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(menu_routes::routes(state.clone()))
         .merge(setting_routes::routes(state.clone()))
         .merge(user_setting_routes::routes(state.clone()))
+        .merge(user_profile_routes::routes(state.clone()))
         .merge(master_routes::routes(state.clone()))
 }
