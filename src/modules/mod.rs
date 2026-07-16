@@ -3,6 +3,7 @@ pub mod audit_auth_log;
 pub mod audit_trail_log;
 pub mod auth;
 pub mod file;
+pub mod masters;
 pub mod menu;
 pub mod permission;
 pub mod role;

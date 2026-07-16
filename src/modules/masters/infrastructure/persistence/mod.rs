@@ -1,0 +1,5 @@
+pub mod master_group_repository_postgres;
+pub mod master_item_repository_postgres;
+
+pub use master_group_repository_postgres::MasterGroupRepositoryPg;
+pub use master_item_repository_postgres::MasterItemRepositoryPg;

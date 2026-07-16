@@ -6,6 +6,7 @@ use crate::modules::audit_auth_log::presentation::routes as audit_auth_routes;
 use crate::modules::audit_trail_log::presentation::routes as audit_trail_routes;
 use crate::modules::auth::presentation::routes as auth_routes;
 use crate::modules::file::presentation::routes as file_routes;
+use crate::modules::masters::presentation::routes as master_routes;
 use crate::modules::menu::presentation::routes as menu_routes;
 use crate::modules::permission::presentation::routes as permission_routes;
 use crate::modules::role::presentation::routes as role_routes;
@@ -26,4 +27,5 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .merge(menu_routes::routes(state.clone()))
         .merge(setting_routes::routes(state.clone()))
         .merge(user_setting_routes::routes(state.clone()))
+        .merge(master_routes::routes(state.clone()))
 }

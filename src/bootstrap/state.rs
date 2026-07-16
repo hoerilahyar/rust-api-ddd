@@ -20,6 +20,12 @@ use crate::modules::auth::infrastructure::persistence::AuthRepositoryPg;
 use crate::modules::file::application::{FileService, FileServiceImpl};
 use crate::modules::file::infrastructure::persistence::FileRepositoryPg;
 use crate::modules::file::infrastructure::storage::LocalFileStorage;
+use crate::modules::masters::application::{
+    MasterGroupService, MasterGroupServiceImpl, MasterItemService, MasterItemServiceImpl,
+};
+use crate::modules::masters::infrastructure::persistence::{
+    MasterGroupRepositoryPg, MasterItemRepositoryPg,
+};
 use crate::modules::menu::application::{MenuService, MenuServiceImpl};
 use crate::modules::menu::infrastructure::persistence::MenuRepositoryPg;
 use crate::modules::permission::application::{PermissionService, PermissionServiceImpl};
@@ -60,6 +66,8 @@ pub struct AppState {
     pub setting_service: Arc<dyn SettingService>,
     pub user_setting_service: Arc<dyn UserSettingService>,
     pub file_service: Arc<dyn FileService>,
+    pub master_group_service: Arc<dyn MasterGroupService>,
+    pub master_item_service: Arc<dyn MasterItemService>,
 }
 
 impl AppState {
@@ -72,6 +80,9 @@ impl AppState {
 
         let cache = Arc::new(RedisCacheRepository::new(redis.clone()));
 
+        // ===========================================
+        // ============== REPOSITORIES ===============
+        // ===========================================
         let user_repo: Arc<UserRepositoryPg> = Arc::new(UserRepositoryPg::new(db.clone()));
         let auth_repo: Arc<AuthRepositoryPg> = Arc::new(AuthRepositoryPg::new(db.clone()));
         let role_repo: Arc<RoleRepositoryPg> = Arc::new(RoleRepositoryPg::new(db.clone()));
@@ -92,7 +103,14 @@ impl AppState {
             LocalFileStorage::new(config.storage.base_path.clone())
                 .expect("failed to initialize local file storage directory"),
         );
+        let master_group_repo: Arc<MasterGroupRepositoryPg> =
+            Arc::new(MasterGroupRepositoryPg::new(db.clone()));
+        let master_item_repo: Arc<MasterItemRepositoryPg> =
+            Arc::new(MasterItemRepositoryPg::new(db.clone()));
 
+        // ===========================================
+        // ================ SERVICES =================
+        // ===========================================
         let user_service: Arc<dyn UserService> = Arc::new(UserServiceImpl::new(
             audit_trail_log_repo.clone(),
             user_repo.clone(),
@@ -156,6 +174,19 @@ impl AppState {
             config.storage.max_upload_bytes,
         ));
 
+        let master_group_service: Arc<dyn MasterGroupService> =
+            Arc::new(MasterGroupServiceImpl::new(
+                audit_trail_log_repo.clone(),
+                master_group_repo,
+                cache.clone(),
+            ));
+
+        let master_item_service: Arc<dyn MasterItemService> = Arc::new(MasterItemServiceImpl::new(
+            audit_trail_log_repo.clone(),
+            master_item_repo,
+            cache.clone(),
+        ));
+
         Self {
             started_at: Utc::now(),
             config,
@@ -174,6 +205,8 @@ impl AppState {
             setting_service,
             user_setting_service,
             file_service,
+            master_group_service,
+            master_item_service,
         }
     }
 }
