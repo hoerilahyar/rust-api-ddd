@@ -50,6 +50,15 @@ impl MasterGroupRepository for MasterGroupRepositoryPg {
         Ok(row.map(|r| Self::map_row(&r)))
     }
 
+    async fn find_by_code(&self, code: &str) -> Result<Option<MasterGroup>, AppError> {
+        let row = sqlx::query("SELECT * FROM master_groups WHERE code = $1 AND deleted_at IS NULL")
+            .bind(code)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(row.map(|r| Self::map_row(&r)))
+    }
+
     async fn list(
         &self,
         pagination: &PaginationParams,

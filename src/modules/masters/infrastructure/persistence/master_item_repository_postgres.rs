@@ -19,6 +19,7 @@ impl MasterItemRepositoryPg {
     fn map_row(row: &sqlx::postgres::PgRow) -> MasterItem {
         MasterItem {
             id: row.get("id"),
+            group_id: row.get("group_id"),
             code: row.get("code"),
             name: row.get("name"),
             extra: row.get("extra"),
@@ -48,6 +49,22 @@ impl MasterItemRepository for MasterItemRepositoryPg {
             .bind(name)
             .fetch_optional(&self.pool)
             .await?;
+
+        Ok(row.map(|r| Self::map_row(&r)))
+    }
+
+    async fn find_by_group_and_code(
+        &self,
+        group_id: i32,
+        code: &str,
+    ) -> Result<Option<MasterItem>, AppError> {
+        let row = sqlx::query(
+            "SELECT * FROM master_items WHERE group_id = $1 AND code = $2 AND deleted_at IS NULL",
+        )
+        .bind(group_id)
+        .bind(code)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(row.map(|r| Self::map_row(&r)))
     }

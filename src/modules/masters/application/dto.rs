@@ -93,6 +93,7 @@ pub struct UpdateMasterItemRequest {
 #[derive(Debug, Serialize)]
 pub struct MasterItemResponse {
     pub id: i32,
+    pub group_id: i32,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
@@ -108,6 +109,7 @@ impl From<MasterItem> for MasterItemResponse {
     fn from(u: MasterItem) -> Self {
         Self {
             id: u.id,
+            group_id: u.group_id,
             code: u.code,
             name: u.name,
             extra: u.extra,

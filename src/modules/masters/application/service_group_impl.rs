@@ -104,6 +104,9 @@ impl MasterGroupService for MasterGroupServiceImpl {
     ) -> Result<MasterGroup, AppError> {
         Name::parse(&req.name)?;
 
+        if self.repo.find_by_code(&req.code).await?.is_some() {
+            return Err(AppError::Conflict("code is already registered".to_string()));
+        }
         if self.repo.find_by_name(&req.name).await?.is_some() {
             return Err(AppError::Conflict("name is already registered".to_string()));
         }
@@ -121,7 +124,6 @@ impl MasterGroupService for MasterGroupServiceImpl {
             None,
             Some(&group),
         );
-
         Ok(group)
     }
 
@@ -133,6 +135,11 @@ impl MasterGroupService for MasterGroupServiceImpl {
     ) -> Result<MasterGroup, AppError> {
         Name::parse(&req.name)?;
 
+        if let Some(existing) = self.repo.find_by_code(&req.code).await? {
+            if existing.id != id {
+                return Err(AppError::Conflict("code is already registered".to_string()));
+            }
+        }
         if let Some(existing) = self.repo.find_by_name(&req.name).await? {
             if existing.id != id {
                 return Err(AppError::Conflict("name is already registered".to_string()));
@@ -164,7 +171,6 @@ impl MasterGroupService for MasterGroupServiceImpl {
             Some(&existing),
             Some(&group),
         );
-
         self.cache.delete(&cache_key(id)).await?;
         Ok(group)
     }

@@ -13,6 +13,7 @@ use crate::{
 pub trait MasterGroupRepository: Send + Sync {
     async fn find_by_id(&self, id: i32) -> Result<Option<MasterGroup>, AppError>;
     async fn find_by_name(&self, name: &str) -> Result<Option<MasterGroup>, AppError>;
+    async fn find_by_code(&self, code: &str) -> Result<Option<MasterGroup>, AppError>;
 
     async fn list(
         &self,
@@ -45,6 +46,11 @@ pub trait MasterGroupRepository: Send + Sync {
 pub trait MasterItemRepository: Send + Sync {
     async fn find_by_id(&self, id: i32) -> Result<Option<MasterItem>, AppError>;
     async fn find_by_name(&self, name: &str) -> Result<Option<MasterItem>, AppError>;
+    async fn find_by_group_and_code(
+        &self,
+        group_id: i32,
+        code: &str,
+    ) -> Result<Option<MasterItem>, AppError>;
 
     async fn list(&self, pagination: &PaginationParams)
         -> Result<(Vec<MasterItem>, i64), AppError>;

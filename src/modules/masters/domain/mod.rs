@@ -4,6 +4,6 @@ pub mod repository;
 pub mod value_object;
 
 pub use entity::{MasterGroup, MasterItem};
-pub use errors::MasterGroupDomainError;
+pub use errors::{MasterGroupDomainError, MasterItemDomainError};
 pub use repository::{MasterGroupRepository, MasterItemRepository};
-pub use value_object::Name;
+pub use value_object::{ItemName, Name};

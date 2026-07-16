@@ -9,7 +9,7 @@ use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
 use crate::modules::masters::application::{
     CreateMasterItemRequest, MasterItemService, UpdateMasterItemRequest,
 };
-use crate::modules::masters::domain::{MasterItem, MasterItemRepository, Name};
+use crate::modules::masters::domain::{ItemName, MasterItem, MasterItemRepository};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -102,10 +102,17 @@ impl MasterItemService for MasterItemServiceImpl {
         req: CreateMasterItemRequest,
         actor_id: i32,
     ) -> Result<MasterItem, AppError> {
-        Name::parse(&req.name)?;
+        ItemName::parse(&req.name)?;
 
-        if self.repo.find_by_name(&req.name).await?.is_some() {
-            return Err(AppError::Conflict("name is already registered".to_string()));
+        if self
+            .repo
+            .find_by_group_and_code(req.group_id, &req.code)
+            .await?
+            .is_some()
+        {
+            return Err(AppError::Conflict(
+                "code is already registered in this group".to_string(),
+            ));
         }
 
         let item = self
@@ -128,7 +135,6 @@ impl MasterItemService for MasterItemServiceImpl {
             None,
             Some(&item),
         );
-
         Ok(item)
     }
 
@@ -138,19 +144,25 @@ impl MasterItemService for MasterItemServiceImpl {
         req: UpdateMasterItemRequest,
         actor_id: i32,
     ) -> Result<MasterItem, AppError> {
-        Name::parse(&req.name)?;
-
-        if let Some(existing) = self.repo.find_by_name(&req.name).await? {
-            if existing.id != id {
-                return Err(AppError::Conflict("name is already registered".to_string()));
-            }
-        }
+        ItemName::parse(&req.name)?;
 
         let existing = self
             .repo
             .find_by_id(id)
             .await?
             .ok_or_else(|| AppError::NotFound("master item not found".to_string()))?;
+
+        if let Some(dup) = self
+            .repo
+            .find_by_group_and_code(existing.group_id, &req.code)
+            .await?
+        {
+            if dup.id != id {
+                return Err(AppError::Conflict(
+                    "code is already registered in this group".to_string(),
+                ));
+            }
+        }
 
         let item = self
             .repo

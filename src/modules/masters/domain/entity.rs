@@ -24,6 +24,7 @@ pub struct MasterGroup {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterItem {
     pub id: i32,
+    pub group_id: i32,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
