@@ -28,7 +28,7 @@ pub struct UpdateMasterGroupRequest {
 
 #[derive(Debug, Serialize)]
 pub struct MasterGroupResponse {
-    pub id: i32,
+    pub id: i64,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
@@ -36,7 +36,7 @@ pub struct MasterGroupResponse {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
-    pub items: Vec<String>,
+    pub items: Vec<MasterItem>,
 }
 
 impl From<MasterGroup> for MasterGroupResponse {
@@ -64,7 +64,8 @@ pub struct CreateMasterItemRequest {
     // this item belongs to. If your route is nested (e.g.
     // /master-groups/{group_id}/items), you can populate this from the path
     // param in the handler instead of the body.
-    pub group_id: i32,
+    #[serde(default)]
+    pub group_id: i64,
     #[validate(length(min = 1, max = 150, message = "code is required"))]
     pub code: String,
     #[validate(length(min = 1, max = 150, message = "name is required"))]
@@ -92,8 +93,8 @@ pub struct UpdateMasterItemRequest {
 
 #[derive(Debug, Serialize)]
 pub struct MasterItemResponse {
-    pub id: i32,
-    pub group_id: i32,
+    pub id: i64,
+    pub group_id: i64,
     pub code: String,
     pub name: String,
     pub description: Option<String>,

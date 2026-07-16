@@ -24,7 +24,7 @@ fn spawn_audit_log(
     audit: Arc<dyn AuditTrailRecorder>,
     actor_id: i32,
     action: &'static str,
-    master_id: i32,
+    master_id: i64,
     old_values: Option<&MasterItem>,
     new_values: Option<&MasterItem>,
 ) {
@@ -52,7 +52,7 @@ fn spawn_audit_log(
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
 
-fn cache_key(id: i32) -> String {
+fn cache_key(id: i64) -> String {
     format!("master_item:id:{id}")
 }
 
@@ -74,7 +74,7 @@ impl MasterItemServiceImpl {
 
 #[async_trait]
 impl MasterItemService for MasterItemServiceImpl {
-    async fn get_by_id(&self, id: i32) -> Result<MasterItem, AppError> {
+    async fn get_by_id(&self, id: i64) -> Result<MasterItem, AppError> {
         let key = cache_key(id);
         if let Some(cached) = self.cache.get::<MasterItem>(&key).await? {
             return Ok(cached);
@@ -140,7 +140,7 @@ impl MasterItemService for MasterItemServiceImpl {
 
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         req: UpdateMasterItemRequest,
         actor_id: i32,
     ) -> Result<MasterItem, AppError> {
@@ -190,7 +190,7 @@ impl MasterItemService for MasterItemServiceImpl {
         Ok(item)
     }
 
-    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError> {
+    async fn delete(&self, id: i64, actor_id: i32) -> Result<(), AppError> {
         let existing = self
             .repo
             .find_by_id(id)

@@ -24,9 +24,9 @@ use crate::{
 pub async fn get_master_item(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "master_item.manage")?;
+    ensure_permission(&claims, "masters.manage")?;
 
     let item = state.master_item_service.get_by_id(id).await?;
     Ok(ApiResponse::new("ok", MasterItemResponse::from(item)))
@@ -37,7 +37,7 @@ pub async fn list_master_items(
     Extension(claims): Extension<Claims>,
     Query(pagination): Query<PaginationParams>,
 ) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "master_item.manage")?;
+    ensure_permission(&claims, "masters.manage")?;
 
     let (items, total) = state.master_item_service.list(&pagination).await?;
     let (page, limit) = pagination.normalized();
@@ -53,10 +53,10 @@ pub async fn list_master_items(
 pub async fn create_master_item(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(group_id): Path<i32>,
+    Path(group_id): Path<i64>,
     ValidatedJson(mut payload): ValidatedJson<CreateMasterItemRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "master_item.manage")?;
+    ensure_permission(&claims, "masters.manage")?;
 
     payload.group_id = group_id;
 
@@ -70,10 +70,10 @@ pub async fn create_master_item(
 pub async fn update_master_item(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
     ValidatedJson(payload): ValidatedJson<UpdateMasterItemRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "master_item.manage")?;
+    ensure_permission(&claims, "masters.manage")?;
 
     let item = state
         .master_item_service
@@ -88,9 +88,9 @@ pub async fn update_master_item(
 pub async fn delete_master_item(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path(id): Path<i32>,
+    Path(id): Path<i64>,
 ) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "master_item.manage")?;
+    ensure_permission(&claims, "masters.manage")?;
 
     state.master_item_service.delete(id, claims.sub).await?;
     Ok(ApiResponse::message("master item deleted"))

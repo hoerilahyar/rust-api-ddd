@@ -13,7 +13,7 @@ use crate::{
 
 #[async_trait]
 pub trait MasterGroupService: Send + Sync {
-    async fn get_by_id(&self, id: i32) -> Result<MasterGroup, AppError>;
+    async fn get_by_id(&self, id: i64) -> Result<MasterGroup, AppError>;
     async fn list(
         &self,
         pagination: &PaginationParams,
@@ -26,17 +26,17 @@ pub trait MasterGroupService: Send + Sync {
     ) -> Result<MasterGroup, AppError>;
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         req: UpdateMasterGroupRequest,
         actor_id: i32,
     ) -> Result<MasterGroup, AppError>;
 
-    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
+    async fn delete(&self, id: i64, actor_id: i32) -> Result<(), AppError>;
 }
 
 #[async_trait]
 pub trait MasterItemService: Send + Sync {
-    async fn get_by_id(&self, id: i32) -> Result<MasterItem, AppError>;
+    async fn get_by_id(&self, id: i64) -> Result<MasterItem, AppError>;
     async fn list(&self, pagination: &PaginationParams)
         -> Result<(Vec<MasterItem>, i64), AppError>;
 
@@ -47,10 +47,10 @@ pub trait MasterItemService: Send + Sync {
     ) -> Result<MasterItem, AppError>;
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         req: UpdateMasterItemRequest,
         actor_id: i32,
     ) -> Result<MasterItem, AppError>;
 
-    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
+    async fn delete(&self, id: i64, actor_id: i32) -> Result<(), AppError>;
 }

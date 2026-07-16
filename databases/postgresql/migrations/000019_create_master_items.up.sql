@@ -24,8 +24,3 @@ CREATE INDEX idx_master_items_is_active ON master_items (is_active);
 CREATE INDEX idx_master_items_deleted_at ON master_items (deleted_at);
 CREATE INDEX idx_master_items_sort_order ON master_items (sort_order);
 CREATE INDEX idx_master_items_extra ON master_items USING GIN (extra);
-
-CREATE TRIGGER trg_master_items_updated_at
-BEFORE UPDATE ON master_items
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();

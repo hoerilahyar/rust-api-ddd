@@ -19,7 +19,3 @@ CREATE TABLE master_groups (
 CREATE INDEX idx_master_groups_is_active ON master_groups (is_active);
 CREATE INDEX idx_master_groups_deleted_at ON master_groups (deleted_at);
 
-CREATE TRIGGER trg_master_groups_updated_at
-BEFORE UPDATE ON master_groups
-FOR EACH ROW
-EXECUTE FUNCTION set_updated_at();

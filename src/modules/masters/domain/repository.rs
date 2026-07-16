@@ -11,7 +11,7 @@ use crate::{
 // ====================================
 #[async_trait]
 pub trait MasterGroupRepository: Send + Sync {
-    async fn find_by_id(&self, id: i32) -> Result<Option<MasterGroup>, AppError>;
+    async fn find_by_id(&self, id: i64) -> Result<Option<MasterGroup>, AppError>;
     async fn find_by_name(&self, name: &str) -> Result<Option<MasterGroup>, AppError>;
     async fn find_by_code(&self, code: &str) -> Result<Option<MasterGroup>, AppError>;
 
@@ -29,14 +29,14 @@ pub trait MasterGroupRepository: Send + Sync {
 
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         code: Option<&str>,
         name: Option<&str>,
         description: Option<&str>,
         is_active: Option<&bool>,
     ) -> Result<MasterGroup, AppError>;
 
-    async fn delete(&self, id: i32) -> Result<(), AppError>;
+    async fn delete(&self, id: i64) -> Result<(), AppError>;
 }
 
 // ====================================
@@ -44,11 +44,11 @@ pub trait MasterGroupRepository: Send + Sync {
 // ====================================
 #[async_trait]
 pub trait MasterItemRepository: Send + Sync {
-    async fn find_by_id(&self, id: i32) -> Result<Option<MasterItem>, AppError>;
+    async fn find_by_id(&self, id: i64) -> Result<Option<MasterItem>, AppError>;
     async fn find_by_name(&self, name: &str) -> Result<Option<MasterItem>, AppError>;
     async fn find_by_group_and_code(
         &self,
-        group_id: i32,
+        group_id: i64,
         code: &str,
     ) -> Result<Option<MasterItem>, AppError>;
 
@@ -57,7 +57,7 @@ pub trait MasterItemRepository: Send + Sync {
 
     async fn create(
         &self,
-        group_id: i32,
+        group_id: i64,
         code: &str,
         name: &str,
         description: Option<&str>,
@@ -67,7 +67,7 @@ pub trait MasterItemRepository: Send + Sync {
 
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         code: Option<&str>,
         name: Option<&str>,
         description: Option<&str>,
@@ -76,5 +76,5 @@ pub trait MasterItemRepository: Send + Sync {
         is_active: Option<&bool>,
     ) -> Result<MasterItem, AppError>;
 
-    async fn delete(&self, id: i32) -> Result<(), AppError>;
+    async fn delete(&self, id: i64) -> Result<(), AppError>;
 }

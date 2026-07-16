@@ -16,7 +16,7 @@ impl MasterItemRepositoryPg {
         Self { pool }
     }
 
-    fn map_row(row: &sqlx::postgres::PgRow) -> MasterItem {
+    pub fn map_row(row: &sqlx::postgres::PgRow) -> MasterItem {
         MasterItem {
             id: row.get("id"),
             group_id: row.get("group_id"),
@@ -35,7 +35,7 @@ impl MasterItemRepositoryPg {
 
 #[async_trait]
 impl MasterItemRepository for MasterItemRepositoryPg {
-    async fn find_by_id(&self, id: i32) -> Result<Option<MasterItem>, AppError> {
+    async fn find_by_id(&self, id: i64) -> Result<Option<MasterItem>, AppError> {
         let row = sqlx::query("SELECT * FROM master_items WHERE id = $1 AND deleted_at IS NULL")
             .bind(id)
             .fetch_optional(&self.pool)
@@ -55,7 +55,7 @@ impl MasterItemRepository for MasterItemRepositoryPg {
 
     async fn find_by_group_and_code(
         &self,
-        group_id: i32,
+        group_id: i64,
         code: &str,
     ) -> Result<Option<MasterItem>, AppError> {
         let row = sqlx::query(
@@ -114,7 +114,7 @@ impl MasterItemRepository for MasterItemRepositoryPg {
 
     async fn create(
         &self,
-        group_id: i32,
+        group_id: i64,
         code: &str,
         name: &str,
         description: Option<&str>,
@@ -142,7 +142,7 @@ impl MasterItemRepository for MasterItemRepositoryPg {
 
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         code: Option<&str>,
         name: Option<&str>,
         description: Option<&str>,
@@ -177,7 +177,7 @@ impl MasterItemRepository for MasterItemRepositoryPg {
         Ok(Self::map_row(&row))
     }
 
-    async fn delete(&self, id: i32) -> Result<(), AppError> {
+    async fn delete(&self, id: i64) -> Result<(), AppError> {
         sqlx::query(
             "UPDATE master_items SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
         )

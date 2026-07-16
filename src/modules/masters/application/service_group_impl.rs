@@ -24,7 +24,7 @@ fn spawn_audit_log(
     audit: Arc<dyn AuditTrailRecorder>,
     actor_id: i32,
     action: &'static str,
-    master_id: i32,
+    master_id: i64,
     old_values: Option<&MasterGroup>,
     new_values: Option<&MasterGroup>,
 ) {
@@ -52,7 +52,7 @@ fn spawn_audit_log(
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
 
-fn cache_key(id: i32) -> String {
+fn cache_key(id: i64) -> String {
     format!("master_group:id:{id}")
 }
 
@@ -74,7 +74,7 @@ impl MasterGroupServiceImpl {
 
 #[async_trait]
 impl MasterGroupService for MasterGroupServiceImpl {
-    async fn get_by_id(&self, id: i32) -> Result<MasterGroup, AppError> {
+    async fn get_by_id(&self, id: i64) -> Result<MasterGroup, AppError> {
         let key = cache_key(id);
         if let Some(cached) = self.cache.get::<MasterGroup>(&key).await? {
             return Ok(cached);
@@ -129,7 +129,7 @@ impl MasterGroupService for MasterGroupServiceImpl {
 
     async fn update(
         &self,
-        id: i32,
+        id: i64,
         req: UpdateMasterGroupRequest,
         actor_id: i32,
     ) -> Result<MasterGroup, AppError> {
@@ -175,7 +175,7 @@ impl MasterGroupService for MasterGroupServiceImpl {
         Ok(group)
     }
 
-    async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError> {
+    async fn delete(&self, id: i64, actor_id: i32) -> Result<(), AppError> {
         let existing = self
             .repo
             .find_by_id(id)

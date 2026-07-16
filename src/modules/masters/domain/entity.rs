@@ -7,7 +7,7 @@ use serde_json::Value;
 // ====================================
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterGroup {
-    pub id: i32,
+    pub id: i64,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
@@ -15,7 +15,7 @@ pub struct MasterGroup {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub deleted_at: Option<DateTime<Utc>>,
-    pub items: Vec<String>,
+    pub items: Vec<MasterItem>,
 }
 
 // ====================================
@@ -23,8 +23,8 @@ pub struct MasterGroup {
 // ====================================
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MasterItem {
-    pub id: i32,
-    pub group_id: i32,
+    pub id: i64,
+    pub group_id: i64,
     pub code: String,
     pub name: String,
     pub description: Option<String>,
