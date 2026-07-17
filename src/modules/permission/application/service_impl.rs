@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use chrono::Utc;
 
-use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
+use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::permission::application::service::PermissionService;
 use crate::modules::permission::application::{CreatePermissionRequest, UpdatePermissionRequest};
 use crate::modules::permission::domain::{Name, Permission, PermissionRepository};

@@ -7,9 +7,9 @@ use chrono::Utc;
 use tokio::fs::File;
 use uuid::Uuid;
 
-use crate::modules::audit_trail_log::domain::AuditTrailLog;
 use crate::modules::file::application::service::FileService;
 use crate::modules::file::domain::{FileAsset, FileRepository, FileStorage};
+use crate::modules::log_audit_trails::domain::AuditTrailLog;
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
 use crate::shared::domain::PaginationParams;

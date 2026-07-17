@@ -1,8 +1,8 @@
-pub mod activity_log;
-pub mod audit_auth_log;
-pub mod audit_trail_log;
 pub mod auth;
 pub mod file;
+pub mod log_activities;
+pub mod log_audit_auths;
+pub mod log_audit_trails;
 pub mod masters;
 pub mod menu;
 pub mod permission;

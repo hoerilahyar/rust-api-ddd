@@ -1,11 +1,11 @@
 use axum::Router;
 
 use crate::bootstrap::state::AppState;
-use crate::modules::activity_log::presentation::routes as activity_log_routes;
-use crate::modules::audit_auth_log::presentation::routes as audit_auth_routes;
-use crate::modules::audit_trail_log::presentation::routes as audit_trail_routes;
 use crate::modules::auth::presentation::routes as auth_routes;
 use crate::modules::file::presentation::routes as file_routes;
+use crate::modules::log_activities::presentation::routes as activity_log_routes;
+use crate::modules::log_audit_auths::presentation::routes as audit_auth_routes;
+use crate::modules::log_audit_trails::presentation::routes as audit_trail_routes;
 use crate::modules::masters::presentation::routes as master_routes;
 use crate::modules::menu::presentation::routes as menu_routes;
 use crate::modules::permission::presentation::routes as permission_routes;

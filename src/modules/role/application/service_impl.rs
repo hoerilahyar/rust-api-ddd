@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use chrono::Utc;
 
-use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
+use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::role::application::service::RoleService;
 use crate::modules::role::application::{CreateRoleRequest, UpdateRoleRequest};
 use crate::modules::role::domain::{Name, Role, RoleRepository};

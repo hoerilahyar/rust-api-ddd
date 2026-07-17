@@ -5,7 +5,7 @@ use async_trait::async_trait;
 
 use chrono::Utc;
 
-use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
+use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::user_setting::application::dto::UpsertUserSettingRequest;
 use crate::modules::user_setting::application::service::UserSettingService;
 use crate::modules::user_setting::domain::{

@@ -5,14 +5,6 @@ use redis::aio::ConnectionManager;
 use sqlx::PgPool;
 
 use crate::bootstrap::config::AppConfig;
-use crate::modules::activity_log::application::{ActivityLogService, ActivityLogServiceImpl};
-use crate::modules::activity_log::infrastructure::persistence::ActivityLogRepositoryPg;
-use crate::modules::audit_auth_log::application::{AuditAuthLogService, AuditAuthLogServiceImpl};
-use crate::modules::audit_auth_log::infrastructure::persistence::AuditAuthLogRepositoryPg;
-use crate::modules::audit_trail_log::application::{
-    AuditTrailLogService, AuditTrailLogServiceImpl,
-};
-use crate::modules::audit_trail_log::infrastructure::persistence::AuditTrailLogRepositoryPg;
 use crate::modules::auth::application::service::AuthService;
 use crate::modules::auth::application::service_impl::AuthServiceImpl;
 use crate::modules::auth::infrastructure::jwt_service::JwtService;
@@ -20,6 +12,14 @@ use crate::modules::auth::infrastructure::persistence::AuthRepositoryPg;
 use crate::modules::file::application::{FileService, FileServiceImpl};
 use crate::modules::file::infrastructure::persistence::FileRepositoryPg;
 use crate::modules::file::infrastructure::storage::LocalFileStorage;
+use crate::modules::log_activities::application::{ActivityLogService, ActivityLogServiceImpl};
+use crate::modules::log_activities::infrastructure::persistence::ActivityLogRepositoryPg;
+use crate::modules::log_audit_auths::application::{AuditAuthLogService, AuditAuthLogServiceImpl};
+use crate::modules::log_audit_auths::infrastructure::persistence::AuditAuthLogRepositoryPg;
+use crate::modules::log_audit_trails::application::{
+    AuditTrailLogService, AuditTrailLogServiceImpl,
+};
+use crate::modules::log_audit_trails::infrastructure::persistence::AuditTrailLogRepositoryPg;
 use crate::modules::masters::application::{
     MasterGroupService, MasterGroupServiceImpl, MasterItemService, MasterItemServiceImpl,
 };

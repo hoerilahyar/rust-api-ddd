@@ -4,7 +4,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use chrono::Utc;
 
-use crate::modules::audit_trail_log::domain::entity::AuditTrailLog;
+use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::user_profile::application::dto::UpsertUserProfileRequest;
 use crate::modules::user_profile::application::service::UserProfileService;
 use crate::modules::user_profile::domain::{UserProfile, UserProfileRepository};

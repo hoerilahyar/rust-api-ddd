@@ -8,7 +8,7 @@ use argon2::Argon2;
 use async_trait::async_trait;
 use chrono::Utc;
 
-use crate::modules::audit_trail_log::domain::AuditTrailLog;
+use crate::modules::log_audit_trails::domain::AuditTrailLog;
 use crate::modules::user::application::dto::{CreateUserRequest, UpdateUserRequest};
 use crate::modules::user::application::service::UserService;
 use crate::modules::user::domain::entity::User;
