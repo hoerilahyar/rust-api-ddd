@@ -29,10 +29,9 @@ pub struct LoginAttempt {
 }
 
 /// Cross-cutting audit contract. Lives in `shared` (not in `auth`) so that
-/// any module can record an auditable action against `user_login_logs`
+/// any module can record an auditable action against `log_audit_auths`
 /// without depending on the auth module's persistence layer directly.
 #[async_trait]
 pub trait AuditAuthRecorder: Send + Sync {
     async fn record_login_attempt(&self, attempt: LoginAttempt) -> Result<(), AppError>;
-    // async fn record_audit_trail_log(&self, log: AuditTrailLog) -> Result<(), AppError>;
 }
