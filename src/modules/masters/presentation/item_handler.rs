@@ -46,7 +46,7 @@ pub async fn list_master_items(
     Ok(PaginatedResponse::new("ok", data, page, limit, total))
 }
 
-/// Route: `POST /masters/:group_id/items`.
+/// Route: `POST /masters/:id/items` (the path param is the group id).
 /// `group_id` is taken from the path, not the request body — any
 /// `group_id` value in the JSON payload is overwritten here so a client
 /// can never assign an item to a group it isn't targeting via the URL.

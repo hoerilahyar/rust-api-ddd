@@ -22,9 +22,18 @@ pub fn routes(state: AppState) -> Router<AppState> {
                 .delete(group_handler::delete_master_group),
         )
         // ---- master items ----
-        // nested create: group_id comes from the path, never trusted from body
+        // nested create: group id comes from the path, never trusted from body.
+        // NOTE: this segment must reuse the same param name (`:id`) as
+        // `/masters/:id` above -- axum's router (matchit) requires every
+        // route sharing a dynamic segment position to use the same
+        // parameter name, even across otherwise-unrelated routes. Using a
+        // different name here (e.g. `:group_id`) makes the whole router
+        // panic at startup with "insertion failed due to conflict with
+        // previously registered route". The extractor in the handler below
+        // still binds it to `group_id` (Path<i64> doesn't care about the
+        // literal name in the route string), so nothing else changes.
         .route(
-            "/masters/:group_id/items",
+            "/masters/:id/items",
             post(item_handler::create_master_item),
         )
         .route("/master-items", get(item_handler::list_master_items))
