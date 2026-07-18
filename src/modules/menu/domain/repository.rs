@@ -33,7 +33,7 @@ pub trait MenuRepository: Send + Sync {
         parent_id: Option<Option<i32>>,
         name: Option<&str>,
         path: Option<&str>,
-        icon: Option<&str>,
+        icon: Option<Option<&str>>,
         order_index: Option<i32>,
         is_active: Option<bool>,
     ) -> Result<Menu, AppError>;

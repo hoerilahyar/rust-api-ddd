@@ -11,11 +11,12 @@ use crate::modules::menu::domain::Menu;
 /// deserialized (via `#[serde(default, deserialize_with = ...)]`) when it's
 /// actually present in the payload; when present, we always wrap in `Some`
 /// and let the inner `Option<T>` handle `null` vs a real value normally.
-fn de_double_option<'de, D>(deserializer: D) -> Result<Option<Option<i32>>, D::Error>
+fn de_double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
+    T: serde::Deserialize<'de>,
     D: Deserializer<'de>,
 {
-    Ok(Some(Option::<i32>::deserialize(deserializer)?))
+    Ok(Some(Option::<T>::deserialize(deserializer)?))
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -46,7 +47,9 @@ pub struct UpdateMenuRequest {
     pub name: Option<String>,
 
     pub path: Option<String>,
-    pub icon: Option<String>,
+
+    #[serde(default, deserialize_with = "de_double_option")]
+    pub icon: Option<Option<String>>,
     pub order_index: Option<i32>,
     pub is_active: Option<bool>,
 }

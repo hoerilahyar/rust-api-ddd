@@ -255,7 +255,7 @@ impl MenuService for MenuServiceImpl {
                 req.parent_id,
                 req.name.as_deref(),
                 req.path.as_deref(),
-                req.icon.as_deref(),
+                req.icon.as_ref().map(|o| o.as_deref()),
                 req.order_index,
                 req.is_active,
             )

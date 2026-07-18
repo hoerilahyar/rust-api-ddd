@@ -34,7 +34,10 @@ impl MenuRepositoryPg {
         .fetch_all(&self.pool)
         .await?;
 
-        menu.permissions = rows.into_iter().map(|r| r.get::<String, _>("name")).collect();
+        menu.permissions = rows
+            .into_iter()
+            .map(|r| r.get::<String, _>("name"))
+            .collect();
         Ok(menu)
     }
 
@@ -82,9 +85,10 @@ impl MenuRepository for MenuRepositoryPg {
     }
 
     async fn list_all(&self) -> Result<Vec<Menu>, AppError> {
-        let rows = sqlx::query("SELECT * FROM menus WHERE deleted_at IS NULL ORDER BY order_index, id")
-            .fetch_all(&self.pool)
-            .await?;
+        let rows =
+            sqlx::query("SELECT * FROM menus WHERE deleted_at IS NULL ORDER BY order_index, id")
+                .fetch_all(&self.pool)
+                .await?;
 
         let mut menus = Vec::with_capacity(rows.len());
         for row in rows {
@@ -127,36 +131,41 @@ impl MenuRepository for MenuRepositoryPg {
         parent_id: Option<Option<i32>>,
         name: Option<&str>,
         path: Option<&str>,
-        icon: Option<&str>,
+        icon: Option<Option<&str>>,
         order_index: Option<i32>,
         is_active: Option<bool>,
     ) -> Result<Menu, AppError> {
-        // Flatten the tri-state into (should_touch_parent, value) so the SQL
-        // side stays a plain boolean CASE instead of needing three branches.
         let should_reparent = parent_id.is_some();
         let new_parent = parent_id.flatten();
 
+        let should_touch_icon = icon.is_some();
+        let new_icon = icon.flatten();
+        println!(
+            "icon param: should_touch={:?} new_icon={:?}",
+            should_touch_icon, new_icon
+        );
         let row = sqlx::query(
             r#"
             UPDATE menus
-            SET parent_id   = CASE WHEN $2 THEN $3 ELSE parent_id END,
-                name        = COALESCE($4, name),
-                path        = COALESCE($5, path),
-                icon        = COALESCE($6, icon),
-                order_index = COALESCE($7, order_index),
-                is_active   = COALESCE($8, is_active)
-            WHERE id = $1 AND deleted_at IS NULL
+            SET parent_id   = CASE WHEN $2::bool THEN $3::int4 ELSE parent_id END,
+                name        = COALESCE($4::text, name),
+                path        = COALESCE($5::text, path),
+                icon        = CASE WHEN $6::bool THEN $7::text ELSE icon END,
+                order_index = COALESCE($8::int4, order_index),
+                is_active   = COALESCE($9::bool, is_active)
+            WHERE id = $1::int4 AND deleted_at IS NULL
             RETURNING *
             "#,
         )
-        .bind(id)
-        .bind(should_reparent)
-        .bind(new_parent)
-        .bind(name)
-        .bind(path)
-        .bind(icon)
-        .bind(order_index)
-        .bind(is_active)
+        .bind(id) // $1
+        .bind(should_reparent) // $2
+        .bind(new_parent) // $3
+        .bind(name) // $4
+        .bind(path) // $5
+        .bind(should_touch_icon) // $6
+        .bind(new_icon) // $7
+        .bind(order_index) // $8
+        .bind(is_active) // $9
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| AppError::NotFound("menu not found".to_string()))?;
