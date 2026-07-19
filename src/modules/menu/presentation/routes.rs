@@ -20,7 +20,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/menus/:id", delete(handler::delete_menu))
         .route("/menus/:id/permission", post(handler::assign_permission))
         .route(
-            "/menus/:id/permission/:permission",
+            "/menus/:id/permission/:permission_id",
             delete(handler::revoke_permission),
         )
         .route_layer(axum::middleware::from_fn_with_state(

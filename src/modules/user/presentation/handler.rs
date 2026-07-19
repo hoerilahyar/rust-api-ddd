@@ -116,13 +116,13 @@ pub async fn assign_role(
 pub async fn revoke_role(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path((id, role)): Path<(i32, String)>,
+    Path((id, role_id)): Path<(i32, String)>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "user.manage")?;
 
     state
         .user_service
-        .revoke_role(id, &role, claims.sub)
+        .revoke_role(id, &role_id, claims.sub)
         .await?;
     Ok(ApiResponse::message("role revoked"))
 }

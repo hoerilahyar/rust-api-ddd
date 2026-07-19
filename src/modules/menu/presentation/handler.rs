@@ -114,9 +114,9 @@ pub async fn assign_permission(
 pub async fn revoke_permission(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
-    Path((id, permission)): Path<(i32, String)>,
+    Path((id, permission_id)): Path<(i32, String)>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "menu.manage")?;
-    state.menu_service.revoke_permission(id, &permission).await?;
+    state.menu_service.revoke_permission(id, &permission_id).await?;
     Ok(ApiResponse::message("permission revoked"))
 }

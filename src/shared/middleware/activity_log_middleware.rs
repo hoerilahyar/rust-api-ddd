@@ -190,8 +190,8 @@ fn module_resource_type(module: &Module) -> &'static str {
 
 /// Maps method + templated path to a semantic `Activity`. Special-cases the
 /// handful of assign/unassign-shaped endpoints (`POST .../roles`,
-/// `DELETE .../roles/:role`, `POST .../permission`,
-/// `DELETE .../permission/:permission`) so those read as `Assign`/`Unassign`
+/// `DELETE .../roles/:role_id`, `POST .../permission`,
+/// `DELETE .../permission/:permission_id`) so those read as `Assign`/`Unassign`
 /// rather than the generic `Create`/`Delete`, and the file module's
 /// `POST /files` / `GET .../download` as `Upload`/`Download`.
 fn infer_activity(method: &Method, template: &str) -> Activity {
@@ -235,7 +235,7 @@ fn infer_activity(method: &Method, template: &str) -> Activity {
 
 /// Best-effort resource id: the actual-path segment lined up against the
 /// last `:param` segment in the matched template (e.g. template
-/// `/users/:id/roles/:role` + actual `/users/42/roles/admin` -> `"admin"`,
+/// `/users/:id/roles/:role_id` + actual `/users/42/roles/admin` -> `"admin"`,
 /// the specific thing this request acted on).
 fn last_path_param(template: &str, actual_path: &str) -> Option<String> {
     let template_segments: Vec<&str> = template.split('/').filter(|s| !s.is_empty()).collect();

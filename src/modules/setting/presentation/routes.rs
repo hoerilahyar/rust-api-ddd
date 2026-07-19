@@ -11,9 +11,9 @@ use crate::shared::middleware::{activity_log_middleware, require_auth};
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route("/settings", get(handler::list_settings))
-        .route("/settings/:key", get(handler::get_setting))
-        .route("/settings/:key", put(handler::upsert_setting))
-        .route("/settings/:key", delete(handler::delete_setting))
+        .route("/settings/:id", get(handler::get_setting))
+        .route("/settings/:id", put(handler::upsert_setting))
+        .route("/settings/:id", delete(handler::delete_setting))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             activity_log_middleware,
