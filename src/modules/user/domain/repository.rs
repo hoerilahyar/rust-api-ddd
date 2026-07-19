@@ -45,6 +45,11 @@ pub trait UserRepository: Send + Sync {
     ) -> Result<(), AppError>;
     async fn revoke_role(&self, user_id: i32, role_id: i32) -> Result<(), AppError>;
     async fn find_role_by_name(&self, name: &str) -> Result<Option<(i32, String)>, AppError>;
+
+    /// Returns the ids of every user currently holding `role_id`. Used when
+    /// a role's permissions change, so every affected user's active
+    /// sessions can be invalidated in one shot.
+    async fn find_user_ids_by_role(&self, role_id: i32) -> Result<Vec<i32>, AppError>;
 }
 
 /// Persistence contract for password history, used to prevent a user from

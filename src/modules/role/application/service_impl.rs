@@ -9,6 +9,8 @@ use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::role::application::service::RoleService;
 use crate::modules::role::application::{CreateRoleRequest, UpdateRoleRequest};
 use crate::modules::role::domain::{Name, Role, RoleRepository};
+use crate::modules::user::domain::repository::UserRepository;
+use crate::shared::authz_cache;
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -59,6 +61,10 @@ pub struct RoleServiceImpl {
     audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn RoleRepository>,
     cache: Arc<RedisCacheRepository>,
+    /// Needed to look up every user holding a given role, so their live
+    /// authz snapshot can be invalidated whenever that role's permissions
+    /// change -- see `invalidate_authz_for_role`.
+    user_repo: Arc<dyn UserRepository>,
 }
 
 impl RoleServiceImpl {
@@ -66,8 +72,36 @@ impl RoleServiceImpl {
         audit: Arc<dyn AuditTrailRecorder>,
         repo: Arc<dyn RoleRepository>,
         cache: Arc<RedisCacheRepository>,
+        user_repo: Arc<dyn UserRepository>,
     ) -> Self {
-        Self { audit, repo, cache }
+        Self {
+            audit,
+            repo,
+            cache,
+            user_repo,
+        }
+    }
+
+    /// Invalidates the live authz snapshot (see `shared::authz_cache`) of
+    /// every user currently holding `role_id`, so a permission grant or
+    /// revoke on this role is visible on each of their very next requests
+    /// instead of waiting out the snapshot's safety-net TTL. Their access
+    /// tokens are left alone -- no forced logout, in either direction.
+    /// Best-effort per user: a failure for one user is logged and does not
+    /// stop the others from being invalidated.
+    async fn invalidate_authz_for_role(&self, role_id: i32) -> Result<(), AppError> {
+        let user_ids = self.user_repo.find_user_ids_by_role(role_id).await?;
+        for user_id in user_ids {
+            if let Err(err) = authz_cache::invalidate(self.cache.as_ref(), user_id).await {
+                tracing::error!(
+                    error = ?err,
+                    role_id,
+                    user_id,
+                    "failed to invalidate live authz snapshot after role permission change"
+                );
+            }
+        }
+        Ok(())
     }
 }
 
@@ -162,6 +196,10 @@ impl RoleService for RoleServiceImpl {
             .await?
             .ok_or_else(|| AppError::NotFound("role not found".to_string()))?;
 
+        // Capture affected users before the role (and its user_roles rows,
+        // if the schema cascades) disappears.
+        let affected_user_ids = self.user_repo.find_user_ids_by_role(id).await?;
+
         self.repo.delete(id).await?;
 
         spawn_audit_log(
@@ -174,6 +212,18 @@ impl RoleService for RoleServiceImpl {
         );
 
         self.cache.delete(&cache_key(id)).await?;
+
+        for user_id in affected_user_ids {
+            if let Err(err) = authz_cache::invalidate(self.cache.as_ref(), user_id).await {
+                tracing::error!(
+                    error = ?err,
+                    role_id = id,
+                    user_id,
+                    "failed to invalidate live authz snapshot after role deletion"
+                );
+            }
+        }
+
         Ok(())
     }
 
@@ -188,6 +238,12 @@ impl RoleService for RoleServiceImpl {
 
         self.repo.assign_permission(role_id, permission_id).await?;
         self.cache.delete(&cache_key(role_id)).await?;
+
+        // Make the newly granted permission/menu visible, on every
+        // affected user's very next request, instead of waiting for their
+        // live authz snapshot's safety-net TTL to lapse on its own.
+        self.invalidate_authz_for_role(role_id).await?;
+
         Ok(())
     }
     async fn revoke_permission(&self, role_id: i32, permission_name: &str) -> Result<(), AppError> {
@@ -201,6 +257,14 @@ impl RoleService for RoleServiceImpl {
 
         self.repo.revoke_permission(role_id, permission_id).await?;
         self.cache.delete(&cache_key(role_id)).await?;
+
+        // Every user holding this role just lost a permission/menu.
+        // Invalidate their live authz snapshot so `require_auth` picks up
+        // the narrower permission set on their very next request -- their
+        // current access token keeps working, it just can't do anything
+        // the removed permission used to allow.
+        self.invalidate_authz_for_role(role_id).await?;
+
         Ok(())
     }
 }

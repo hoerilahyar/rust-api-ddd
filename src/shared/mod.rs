@@ -1,3 +1,4 @@
+pub mod authz_cache;
 pub mod domain;
 pub mod contracts;
 pub mod context;

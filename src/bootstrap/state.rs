@@ -42,7 +42,7 @@ use crate::modules::user_profile::infrastructure::persistence::UserProfileReposi
 use crate::modules::user_setting::application::{UserSettingService, UserSettingServiceImpl};
 use crate::modules::user_setting::infrastructure::persistence::UserSettingRepositoryPg;
 use crate::shared::cache::RedisCacheRepository;
-use crate::shared::contracts::ActivityRecorder;
+use crate::shared::contracts::{ActivityRecorder, UserReader};
 
 /// Shared application state injected into every handler via `State<AppState>`.
 /// Cheap to clone: everything inside is either a connection pool/manager or
@@ -54,6 +54,14 @@ pub struct AppState {
     pub db: PgPool,
     pub redis: ConnectionManager,
     pub jwt: Arc<JwtService>,
+    /// Generic cache-aside handle, used directly by `require_auth` for the
+    /// live per-request authorization lookup (see `shared::authz_cache`).
+    pub cache: Arc<RedisCacheRepository>,
+    /// Read-only user lookups, used directly by `require_auth` on an authz
+    /// cache miss -- kept as the narrow `UserReader` contract rather than
+    /// the full `UserRepository` so the middleware only depends on what it
+    /// needs.
+    pub user_reader: Arc<dyn UserReader>,
     pub user_service: Arc<dyn UserService>,
     pub auth_service: Arc<dyn AuthService>,
     pub role_service: Arc<dyn RoleService>,
@@ -121,19 +129,26 @@ impl AppState {
             user_repo.clone(),
             user_repo.clone(),
             cache.clone(),
+            auth_repo.clone(),
         ));
 
         let auth_service: Arc<dyn AuthService> = Arc::new(AuthServiceImpl::new(
             auth_repo.clone(),
-            user_repo,
+            user_repo.clone(),
             audit_auth_log_repo.clone(),
             jwt.clone(),
         ));
+
+        // Kept as a narrow `Arc<dyn UserReader>` on AppState for
+        // `require_auth`'s live authorization lookup -- cloned before the
+        // concrete `user_repo` is moved into `role_service` below.
+        let user_reader: Arc<dyn UserReader> = user_repo.clone();
 
         let role_service: Arc<dyn RoleService> = Arc::new(RoleServiceImpl::new(
             audit_trail_log_repo.clone(),
             role_repo.clone(),
             cache.clone(),
+            user_repo,
         ));
 
         let permission_service: Arc<dyn PermissionService> = Arc::new(PermissionServiceImpl::new(
@@ -206,6 +221,8 @@ impl AppState {
             db,
             redis,
             jwt,
+            cache,
+            user_reader,
             user_service,
             auth_service,
             role_service,

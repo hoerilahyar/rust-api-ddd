@@ -8,12 +8,14 @@ use argon2::Argon2;
 use async_trait::async_trait;
 use chrono::Utc;
 
+use crate::modules::auth::domain::AuthRepository;
 use crate::modules::log_audit_trails::domain::AuditTrailLog;
 use crate::modules::user::application::dto::{CreateUserRequest, UpdateUserRequest};
 use crate::modules::user::application::service::UserService;
 use crate::modules::user::domain::entity::User;
 use crate::modules::user::domain::repository::{PasswordHistoryRepository, UserRepository};
 use crate::modules::user::domain::value_object::{Email, Username};
+use crate::shared::authz_cache;
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -69,6 +71,11 @@ pub struct UserServiceImpl {
     repo: Arc<dyn UserRepository>,
     password_history_repo: Arc<dyn PasswordHistoryRepository>,
     cache: Arc<RedisCacheRepository>,
+    /// Used to force-invalidate a user's active sessions whenever their
+    /// access is narrowed (role revoked, account deactivated/deleted) so
+    /// the change takes effect immediately instead of waiting for the
+    /// access token to expire or for the user to log out manually.
+    auth_repo: Arc<dyn AuthRepository>,
 }
 
 impl UserServiceImpl {
@@ -77,12 +84,14 @@ impl UserServiceImpl {
         repo: Arc<dyn UserRepository>,
         password_history_repo: Arc<dyn PasswordHistoryRepository>,
         cache: Arc<RedisCacheRepository>,
+        auth_repo: Arc<dyn AuthRepository>,
     ) -> Self {
         Self {
             audit,
             repo,
             password_history_repo,
             cache,
+            auth_repo,
         }
     }
 
@@ -264,6 +273,20 @@ impl UserService for UserServiceImpl {
         );
 
         self.cache.delete(&cache_key(id)).await?;
+
+        // Account was just deactivated: (1) invalidate the live authz
+        // snapshot so `require_auth` rejects their *current*, still-valid
+        // access token on its very next use, and (2) kill every refresh
+        // token so they can't silently mint a new access token either.
+        // Together these lock the account out immediately, not just after
+        // the access token's TTL runs out.
+        if existing.is_active && !user.is_active {
+            authz_cache::invalidate(self.cache.as_ref(), id).await?;
+            self.auth_repo
+                .revoke_all_refresh_tokens_for_user(id)
+                .await?;
+        }
+
         Ok(user)
     }
 
@@ -326,6 +349,13 @@ impl UserService for UserServiceImpl {
         );
 
         self.cache.delete(&cache_key(id)).await?;
+
+        // Deleted account: block their current access token immediately
+        // (live authz snapshot) and make sure any refresh token they're
+        // holding stops working too.
+        authz_cache::invalidate(self.cache.as_ref(), id).await?;
+        self.auth_repo.revoke_all_refresh_tokens_for_user(id).await?;
+
         Ok(())
     }
 
@@ -366,6 +396,12 @@ impl UserService for UserServiceImpl {
         );
 
         self.cache.delete(&cache_key(user_id)).await?;
+
+        // Make the newly granted role's permissions/menus visible on this
+        // user's very next request instead of waiting for their current
+        // access token to expire.
+        authz_cache::invalidate(self.cache.as_ref(), user_id).await?;
+
         Ok(())
     }
 
@@ -405,6 +441,15 @@ impl UserService for UserServiceImpl {
         );
 
         self.cache.delete(&cache_key(user_id)).await?;
+
+        // A role (and the permissions/menus it grants) was just taken away
+        // from this user. Invalidate the live authz snapshot so
+        // `require_auth` picks up the narrower permission set on this
+        // user's very next request -- their current access token keeps
+        // working (no forced logout), it just can't do anything the
+        // removed role used to allow.
+        authz_cache::invalidate(self.cache.as_ref(), user_id).await?;
+
         Ok(())
     }
 }

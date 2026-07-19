@@ -328,6 +328,15 @@ impl UserRepository for UserRepositoryPg {
 
         Ok(row.map(|r| (r.get("id"), r.get("name"))))
     }
+
+    async fn find_user_ids_by_role(&self, role_id: i32) -> Result<Vec<i32>, AppError> {
+        let rows = sqlx::query("SELECT user_id FROM user_roles WHERE role_id = $1")
+            .bind(role_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.into_iter().map(|r| r.get("user_id")).collect())
+    }
 }
 
 use crate::modules::user::domain::repository::PasswordHistoryRepository;
