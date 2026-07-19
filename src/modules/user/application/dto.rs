@@ -24,8 +24,14 @@ pub struct UpdateUserRequest {
     #[validate(length(min = 1, max = 150, message = "name is required"))]
     pub name: Option<String>,
 
+    #[validate(length(min = 3, max = 150, message = "username must be 3-150 characters"))]
+    pub username: Option<String>,
+
     #[validate(email(message = "must be a valid email"))]
     pub email: Option<String>,
+
+    #[validate(length(min = 8, message = "password must be at least 8 characters"))]
+    pub password: Option<String>,
 
     pub is_active: Option<bool>,
 }

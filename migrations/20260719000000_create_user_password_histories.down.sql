@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS idx_user_password_histories_user_id_created_at;
+DROP TABLE IF EXISTS user_password_histories;

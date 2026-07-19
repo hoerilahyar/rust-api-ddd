@@ -12,7 +12,7 @@ use crate::modules::log_audit_trails::domain::AuditTrailLog;
 use crate::modules::user::application::dto::{CreateUserRequest, UpdateUserRequest};
 use crate::modules::user::application::service::UserService;
 use crate::modules::user::domain::entity::User;
-use crate::modules::user::domain::repository::UserRepository;
+use crate::modules::user::domain::repository::{PasswordHistoryRepository, UserRepository};
 use crate::modules::user::domain::value_object::{Email, Username};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
@@ -58,6 +58,7 @@ fn spawn_audit_log(
 }
 
 const CACHE_TTL: Duration = Duration::from_secs(300);
+const PASSWORD_HISTORY_LIMIT: i64 = 3;
 
 fn cache_key(id: i32) -> String {
     format!("user:id:{id}")
@@ -66,6 +67,7 @@ fn cache_key(id: i32) -> String {
 pub struct UserServiceImpl {
     audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn UserRepository>,
+    password_history_repo: Arc<dyn PasswordHistoryRepository>,
     cache: Arc<RedisCacheRepository>,
 }
 
@@ -73,9 +75,15 @@ impl UserServiceImpl {
     pub fn new(
         audit: Arc<dyn AuditTrailRecorder>,
         repo: Arc<dyn UserRepository>,
+        password_history_repo: Arc<dyn PasswordHistoryRepository>,
         cache: Arc<RedisCacheRepository>,
     ) -> Self {
-        Self { audit, repo, cache }
+        Self {
+            audit,
+            repo,
+            password_history_repo,
+            cache,
+        }
     }
 
     fn hash_password(&self, plain: &str) -> Result<String, AppError> {
@@ -92,6 +100,44 @@ impl UserServiceImpl {
         Ok(Argon2::default()
             .verify_password(plain.as_bytes(), &parsed)
             .is_ok())
+    }
+
+    async fn ensure_password_not_reused(
+        &self,
+        id: i32,
+        new_password: &str,
+        current_hash: &str,
+    ) -> Result<(), AppError> {
+        if self.verify_password(new_password, current_hash)? {
+            return Err(AppError::BadRequest(
+                "new password must be different from current password".into(),
+            ));
+        }
+
+        let recent_hashes = self
+            .password_history_repo
+            .recent_password_hashes(id, PASSWORD_HISTORY_LIMIT)
+            .await?;
+
+        for hash in &recent_hashes {
+            if self.verify_password(new_password, hash)? {
+                return Err(AppError::BadRequest(format!(
+                    "new password must not match any of your last {PASSWORD_HISTORY_LIMIT} passwords"
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn record_password_history(&self, id: i32, old_hash: &str) -> Result<(), AppError> {
+        self.password_history_repo
+            .record_password_hash(id, old_hash)
+            .await?;
+        self.password_history_repo
+            .prune_password_history(id, PASSWORD_HISTORY_LIMIT)
+            .await?;
+        Ok(())
     }
 }
 
@@ -165,16 +211,48 @@ impl UserService for UserServiceImpl {
             }
         }
 
+        if let Some(username) = &req.username {
+            Username::parse(username)?;
+            if let Some(existing) = self.repo.find_by_username(username).await? {
+                if existing.id != id {
+                    return Err(AppError::Conflict(
+                        "username is already registered".to_string(),
+                    ));
+                }
+            }
+        }
+
         let existing = self
             .repo
             .find_by_id(id)
             .await?
             .ok_or_else(|| AppError::NotFound("user not found".to_string()))?;
 
+        let new_password_hash = if let Some(password) = &req.password {
+            self.ensure_password_not_reused(id, password, &existing.password_hash)
+                .await?;
+
+            Some(self.hash_password(password)?)
+        } else {
+            None
+        };
+
         let user = self
             .repo
-            .update(id, req.name.as_deref(), req.email.as_deref(), req.is_active)
+            .update(
+                id,
+                req.name.as_deref(),
+                req.username.as_deref(),
+                req.email.as_deref(),
+                new_password_hash.as_deref(),
+                req.is_active,
+            )
             .await?;
+
+        if new_password_hash.is_some() {
+            self.record_password_history(id, &existing.password_hash)
+                .await?;
+        }
 
         spawn_audit_log(
             self.audit.clone(),
@@ -208,22 +286,21 @@ impl UserService for UserServiceImpl {
             ));
         }
 
-        let existing = self
-            .repo
-            .find_by_id(id)
-            .await?
-            .ok_or_else(|| AppError::NotFound("user not found".to_string()))?;
+        self.ensure_password_not_reused(id, new_password, &user.password_hash)
+            .await?;
 
         let new_hash = self.hash_password(new_password)?;
         self.repo.update_password(id, &new_hash).await?;
+        self.record_password_history(id, &user.password_hash)
+            .await?;
 
         spawn_audit_log(
             self.audit.clone(),
             actor_id,
             "user.change_password",
             &id.to_string(),
-            Some(&existing),
             Some(&user),
+            None,
         );
 
         self.cache.delete(&cache_key(id)).await?;
@@ -273,8 +350,6 @@ impl UserService for UserServiceImpl {
 
         self.repo.assign_role(user_id, role_id, assigned_by).await?;
 
-        // fetch ulang setelah assign supaya `roles` di dalamnya sudah ter-update,
-        // dipakai sebagai new_values di audit log
         let updated = self
             .repo
             .find_by_id(user_id)

@@ -242,22 +242,29 @@ impl UserRepository for UserRepositoryPg {
         &self,
         id: i32,
         name: Option<&str>,
+        username: Option<&str>,
         email: Option<&str>,
+        password: Option<&str>,
         is_active: Option<bool>,
     ) -> Result<User, AppError> {
         let row = sqlx::query(
             r#"
             UPDATE users
-            SET name = COALESCE($2, name),
-                email = COALESCE($3, email),
-                is_active = COALESCE($4, is_active)
+            SET
+                name = COALESCE($2, name),
+                username = COALESCE($3, username),
+                email = COALESCE($4, email),
+                password_hash = COALESCE($5, password_hash),
+                is_active = COALESCE($6, is_active)
             WHERE id = $1 AND deleted_at IS NULL
             RETURNING *
             "#,
         )
         .bind(id)
         .bind(name)
+        .bind(username)
         .bind(email)
+        .bind(password)
         .bind(is_active)
         .fetch_optional(&self.pool)
         .await?
@@ -320,5 +327,70 @@ impl UserRepository for UserRepositoryPg {
             .await?;
 
         Ok(row.map(|r| (r.get("id"), r.get("name"))))
+    }
+}
+
+use crate::modules::user::domain::repository::PasswordHistoryRepository;
+
+/// SQLx/Postgres implementation of [`PasswordHistoryRepository`], reusing
+/// the same connection pool as [`UserRepositoryPg`].
+#[async_trait]
+impl PasswordHistoryRepository for UserRepositoryPg {
+    async fn recent_password_hashes(
+        &self,
+        user_id: i32,
+        limit: i64,
+    ) -> Result<Vec<String>, AppError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT password_hash
+            FROM user_password_histories
+            WHERE user_id = $1
+            ORDER BY created_at DESC
+            LIMIT $2
+            "#,
+        )
+        .bind(user_id)
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|r| r.get::<String, _>("password_hash"))
+            .collect())
+    }
+
+    async fn record_password_hash(
+        &self,
+        user_id: i32,
+        password_hash: &str,
+    ) -> Result<(), AppError> {
+        sqlx::query("INSERT INTO user_password_histories (user_id, password_hash) VALUES ($1, $2)")
+            .bind(user_id)
+            .bind(password_hash)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    async fn prune_password_history(&self, user_id: i32, keep: i64) -> Result<(), AppError> {
+        sqlx::query(
+            r#"
+            DELETE FROM user_password_histories
+            WHERE user_id = $1
+              AND id NOT IN (
+                  SELECT id FROM user_password_histories
+                  WHERE user_id = $1
+                  ORDER BY created_at DESC
+                  LIMIT $2
+              )
+            "#,
+        )
+        .bind(user_id)
+        .bind(keep)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
     }
 }

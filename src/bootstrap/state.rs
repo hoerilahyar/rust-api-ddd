@@ -119,6 +119,7 @@ impl AppState {
         let user_service: Arc<dyn UserService> = Arc::new(UserServiceImpl::new(
             audit_trail_log_repo.clone(),
             user_repo.clone(),
+            user_repo.clone(),
             cache.clone(),
         ));
 
