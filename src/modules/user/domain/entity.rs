@@ -16,6 +16,8 @@ pub struct User {
     pub deleted_at: Option<DateTime<Utc>>,
     #[serde(default)]
     pub roles: Vec<String>,
+    #[serde(default)]
+    pub permissions: Vec<String>,
 }
 
 impl User {

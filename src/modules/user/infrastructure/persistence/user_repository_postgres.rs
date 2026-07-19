@@ -39,6 +39,12 @@ impl UserRepositoryPg {
         Ok(user)
     }
 
+    async fn attach_roles_and_permissions(&self, user: User) -> Result<User, AppError> {
+        let mut user = self.attach_roles(user).await?;
+        user.permissions = self.permissions_for_user(user.id).await?;
+        Ok(user)
+    }
+
     fn map_row(row: &sqlx::postgres::PgRow) -> User {
         User {
             id: row.get("id"),
@@ -52,6 +58,7 @@ impl UserRepositoryPg {
             updated_at: row.get("updated_at"),
             deleted_at: row.get("deleted_at"),
             roles: Vec::new(),
+            permissions: Vec::new(),
         }
     }
 
@@ -95,8 +102,9 @@ impl UserReader for UserRepositoryPg {
         .await?;
 
         let Some(row) = row else { return Ok(None) };
-        let user = self.attach_roles(Self::map_row(&row)).await?;
-        let permissions = self.permissions_for_user(user.id).await?;
+        let user = self
+            .attach_roles_and_permissions(Self::map_row(&row))
+            .await?;
         Ok(Some(UserAuthProjection {
             id: user.id,
             name: user.name,
@@ -105,14 +113,13 @@ impl UserReader for UserRepositoryPg {
             password_hash: user.password_hash,
             is_active: user.is_active,
             roles: user.roles,
-            permissions,
+            permissions: user.permissions,
         }))
     }
 
     async fn find_by_id(&self, id: i32) -> Result<Option<UserAuthProjection>, AppError> {
-        let user = UserRepository::find_by_id(self, id).await?;
+        let user = UserRepository::find_by_id(self, id).await?; // sekarang sudah include permissions
         let Some(u) = user else { return Ok(None) };
-        let permissions = self.permissions_for_user(u.id).await?;
         Ok(Some(UserAuthProjection {
             id: u.id,
             name: u.name,
@@ -121,7 +128,7 @@ impl UserReader for UserRepositoryPg {
             password_hash: u.password_hash,
             is_active: u.is_active,
             roles: u.roles,
-            permissions,
+            permissions: u.permissions,
         }))
     }
 
@@ -147,7 +154,9 @@ impl UserRepository for UserRepositoryPg {
             .await?;
 
         match row {
-            Some(r) => Ok(Some(self.attach_roles(Self::map_row(&r)).await?)),
+            Some(r) => Ok(Some(
+                self.attach_roles_and_permissions(Self::map_row(&r)).await?,
+            )),
             None => Ok(None),
         }
     }
@@ -270,7 +279,7 @@ impl UserRepository for UserRepositoryPg {
         .await?
         .ok_or_else(|| AppError::NotFound("user not found".to_string()))?;
 
-        self.attach_roles(Self::map_row(&row)).await
+        self.attach_roles_and_permissions(Self::map_row(&row)).await
     }
 
     async fn update_password(&self, id: i32, password_hash: &str) -> Result<(), AppError> {
