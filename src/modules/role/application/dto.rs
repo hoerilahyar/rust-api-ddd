@@ -23,9 +23,11 @@ pub struct UpdateRoleRequest {
 }
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct AssignPermissionRequest {
-    #[validate(length(min = 1, message = "role name is required"))]
-    pub permission: String,
+pub struct SyncRolePermissionsRequest {
+    /// Full desired permission-id list for this role; the server diffs
+    /// this against what's currently assigned and adds/removes accordingly.
+    /// An empty list revokes every permission from the role.
+    pub permission_ids: Vec<i32>,
 }
 
 #[derive(Debug, Serialize)]

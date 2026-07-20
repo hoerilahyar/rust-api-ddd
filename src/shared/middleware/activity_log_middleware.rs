@@ -189,11 +189,12 @@ fn module_resource_type(module: &Module) -> &'static str {
 }
 
 /// Maps method + templated path to a semantic `Activity`. Special-cases the
-/// handful of assign/unassign-shaped endpoints (`POST .../roles`,
-/// `DELETE .../roles/:role_id`, `POST .../permission`,
-/// `DELETE .../permission/:permission_id`) so those read as `Assign`/`Unassign`
-/// rather than the generic `Create`/`Delete`, and the file module's
-/// `POST /files` / `GET .../download` as `Upload`/`Download`.
+/// user role-assignment endpoints (`POST .../roles`,
+/// `DELETE .../roles/:role_id`) so those read as `Assign`/`Unassign` rather
+/// than the generic `Create`/`Delete`, and the file module's `POST /files` /
+/// `GET .../download` as `Upload`/`Download`. Permission syncing
+/// (`PUT .../permissions`) is a full replace, not an incremental
+/// assign/unassign, so it falls through to the generic `Update` case below.
 fn infer_activity(method: &Method, template: &str) -> Activity {
     let last_segment_is_param = template
         .rsplit('/')
@@ -207,7 +208,7 @@ fn infer_activity(method: &Method, template: &str) -> Activity {
 
     match *method {
         Method::POST => {
-            if template.ends_with("/roles") || template.ends_with("/permission") {
+            if template.ends_with("/roles") {
                 Activity::Assign
             } else if template.ends_with("/files") {
                 Activity::Upload
@@ -217,7 +218,7 @@ fn infer_activity(method: &Method, template: &str) -> Activity {
         }
         Method::PUT | Method::PATCH => Activity::Update,
         Method::DELETE => {
-            if template.contains("/roles/") || template.contains("/permission/") {
+            if template.contains("/roles/") {
                 Activity::Unassign
             } else {
                 Activity::Delete

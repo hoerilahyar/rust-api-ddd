@@ -10,6 +10,7 @@ use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::menu::application::dto::{CreateMenuRequest, MenuTreeNode, UpdateMenuRequest};
 use crate::modules::menu::application::service::MenuService;
 use crate::modules::menu::domain::{Menu, MenuDomainError, MenuRepository};
+use crate::modules::permission::domain::PermissionRepository;
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -62,6 +63,10 @@ pub struct MenuServiceImpl {
     audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn MenuRepository>,
     cache: Arc<RedisCacheRepository>,
+    /// Used to validate a `permission_id` exists before assigning/revoking
+    /// it, so an unknown id surfaces as a clean 404 instead of a raw FK
+    /// violation from the `menu_permissions` insert.
+    permission_repo: Arc<dyn PermissionRepository>,
 }
 
 impl MenuServiceImpl {
@@ -69,8 +74,14 @@ impl MenuServiceImpl {
         audit: Arc<dyn AuditTrailRecorder>,
         repo: Arc<dyn MenuRepository>,
         cache: Arc<RedisCacheRepository>,
+        permission_repo: Arc<dyn PermissionRepository>,
     ) -> Self {
-        Self { audit, repo, cache }
+        Self {
+            audit,
+            repo,
+            cache,
+            permission_repo,
+        }
     }
 }
 
@@ -296,30 +307,28 @@ impl MenuService for MenuServiceImpl {
         Ok(())
     }
 
-    async fn assign_permission(&self, menu_id: i32, permission_name: &str) -> Result<(), AppError> {
-        let (permission_id, _) = self
-            .repo
-            .find_permission_by_name(permission_name)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("permission '{permission_name}' not found"))
-            })?;
+    /// Validates every id in `permission_ids` exists, then reconciles the
+    /// menu's permission set to exactly that list in one DB transaction.
+    async fn sync_permissions(&self, menu_id: i32, permission_ids: &[i32]) -> Result<(), AppError> {
+        let mut unique_ids: Vec<i32> = permission_ids.to_vec();
+        unique_ids.sort_unstable();
+        unique_ids.dedup();
 
-        self.repo.assign_permission(menu_id, permission_id).await?;
-        self.cache.delete(&cache_key(menu_id)).await?;
-        Ok(())
-    }
+        let found = self.permission_repo.find_many_by_ids(&unique_ids).await?;
+        if found.len() != unique_ids.len() {
+            let found_ids: std::collections::HashSet<i32> = found.iter().map(|p| p.id).collect();
+            let missing: Vec<String> = unique_ids
+                .iter()
+                .filter(|id| !found_ids.contains(id))
+                .map(|id| id.to_string())
+                .collect();
+            return Err(AppError::NotFound(format!(
+                "permission(s) not found: {}",
+                missing.join(", ")
+            )));
+        }
 
-    async fn revoke_permission(&self, menu_id: i32, permission_name: &str) -> Result<(), AppError> {
-        let (permission_id, _) = self
-            .repo
-            .find_permission_by_name(permission_name)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("permission '{permission_name}' not found"))
-            })?;
-
-        self.repo.revoke_permission(menu_id, permission_id).await?;
+        self.repo.sync_permissions(menu_id, &unique_ids).await?;
         self.cache.delete(&cache_key(menu_id)).await?;
         Ok(())
     }

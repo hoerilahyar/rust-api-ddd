@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use chrono::Utc;
 
 use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
+use crate::modules::permission::domain::PermissionRepository;
 use crate::modules::role::application::service::RoleService;
 use crate::modules::role::application::{CreateRoleRequest, UpdateRoleRequest};
 use crate::modules::role::domain::{Name, Role, RoleRepository};
@@ -65,6 +66,10 @@ pub struct RoleServiceImpl {
     /// authz snapshot can be invalidated whenever that role's permissions
     /// change -- see `invalidate_authz_for_role`.
     user_repo: Arc<dyn UserRepository>,
+    /// Used to validate a `permission_id` exists before assigning/revoking
+    /// it, so an unknown id surfaces as a clean 404 instead of a raw FK
+    /// violation from the `role_permissions` insert.
+    permission_repo: Arc<dyn PermissionRepository>,
 }
 
 impl RoleServiceImpl {
@@ -73,12 +78,14 @@ impl RoleServiceImpl {
         repo: Arc<dyn RoleRepository>,
         cache: Arc<RedisCacheRepository>,
         user_repo: Arc<dyn UserRepository>,
+        permission_repo: Arc<dyn PermissionRepository>,
     ) -> Self {
         Self {
             audit,
             repo,
             cache,
             user_repo,
+            permission_repo,
         }
     }
 
@@ -227,42 +234,37 @@ impl RoleService for RoleServiceImpl {
         Ok(())
     }
 
-    async fn assign_permission(&self, role_id: i32, permission_name: &str) -> Result<(), AppError> {
-        let (permission_id, _) = self
-            .repo
-            .find_permission_by_name(permission_name)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("permission '{permission_name}' not found"))
-            })?;
+    /// Validates every id in `permission_ids` exists, reconciles the role's
+    /// permission set to exactly that list in one DB transaction, then
+    /// invalidates the live authz snapshot for every user holding this role
+    /// so the change is visible on their very next request.
+    async fn sync_permissions(&self, role_id: i32, permission_ids: &[i32]) -> Result<(), AppError> {
+        let mut unique_ids: Vec<i32> = permission_ids.to_vec();
+        unique_ids.sort_unstable();
+        unique_ids.dedup();
 
-        self.repo.assign_permission(role_id, permission_id).await?;
+        let found = self.permission_repo.find_many_by_ids(&unique_ids).await?;
+        if found.len() != unique_ids.len() {
+            let found_ids: std::collections::HashSet<i32> = found.iter().map(|p| p.id).collect();
+            let missing: Vec<String> = unique_ids
+                .iter()
+                .filter(|id| !found_ids.contains(id))
+                .map(|id| id.to_string())
+                .collect();
+            return Err(AppError::NotFound(format!(
+                "permission(s) not found: {}",
+                missing.join(", ")
+            )));
+        }
+
+        self.repo.sync_permissions(role_id, &unique_ids).await?;
         self.cache.delete(&cache_key(role_id)).await?;
 
-        // Make the newly granted permission/menu visible, on every
-        // affected user's very next request, instead of waiting for their
-        // live authz snapshot's safety-net TTL to lapse on its own.
-        self.invalidate_authz_for_role(role_id).await?;
-
-        Ok(())
-    }
-    async fn revoke_permission(&self, role_id: i32, permission_name: &str) -> Result<(), AppError> {
-        let (permission_id, _) = self
-            .repo
-            .find_permission_by_name(permission_name)
-            .await?
-            .ok_or_else(|| {
-                AppError::NotFound(format!("permission '{permission_name}' not found"))
-            })?;
-
-        self.repo.revoke_permission(role_id, permission_id).await?;
-        self.cache.delete(&cache_key(role_id)).await?;
-
-        // Every user holding this role just lost a permission/menu.
-        // Invalidate their live authz snapshot so `require_auth` picks up
-        // the narrower permission set on their very next request -- their
-        // current access token keeps working, it just can't do anything
-        // the removed permission used to allow.
+        // Every user holding this role may have gained or lost a
+        // permission/menu. Invalidate their live authz snapshot so
+        // `require_auth` picks up the new permission set on their very
+        // next request -- their current access token keeps working, it
+        // just reflects the updated permission set.
         self.invalidate_authz_for_role(role_id).await?;
 
         Ok(())

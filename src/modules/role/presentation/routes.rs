@@ -14,11 +14,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/roles/:id", get(handler::get_role))
         .route("/roles/:id", put(handler::update_role))
         .route("/roles/:id", delete(handler::delete_role))
-        .route("/roles/:id/permission", post(handler::assign_permission))
-        .route(
-            "/roles/:id/permission/:permission_id",
-            delete(handler::revoke_permission),
-        )
+        .route("/roles/:id/permissions", put(handler::sync_permissions))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             activity_log_middleware,

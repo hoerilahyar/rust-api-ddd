@@ -19,6 +19,8 @@ pub trait RoleService: Send + Sync {
 
     async fn delete(&self, id: i32, actor_id: i32) -> Result<(), AppError>;
 
-    async fn assign_permission(&self, role_id: i32, permission_name: &str) -> Result<(), AppError>;
-    async fn revoke_permission(&self, role_id: i32, permission_name: &str) -> Result<(), AppError>;
+    /// Replaces the role's full permission set with `permission_ids` in one
+    /// atomic operation: assigns ids that are missing, revokes ids that are
+    /// no longer present.
+    async fn sync_permissions(&self, role_id: i32, permission_ids: &[i32]) -> Result<(), AppError>;
 }

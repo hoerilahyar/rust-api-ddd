@@ -55,9 +55,11 @@ pub struct UpdateMenuRequest {
 }
 
 #[derive(Debug, Deserialize, Validate)]
-pub struct AssignMenuPermissionRequest {
-    #[validate(length(min = 1, message = "permission name is required"))]
-    pub permission: String,
+pub struct SyncMenuPermissionsRequest {
+    /// Full desired permission-id list for this menu; the server diffs
+    /// this against what's currently assigned and adds/removes accordingly.
+    /// An empty list revokes every permission from the menu.
+    pub permission_ids: Vec<i32>,
 }
 
 #[derive(Debug, Serialize)]

@@ -149,6 +149,7 @@ impl AppState {
             role_repo.clone(),
             cache.clone(),
             user_repo,
+            permission_repo.clone(),
         ));
 
         let permission_service: Arc<dyn PermissionService> = Arc::new(PermissionServiceImpl::new(
@@ -173,6 +174,7 @@ impl AppState {
             audit_trail_log_repo.clone(),
             menu_repo,
             cache.clone(),
+            permission_repo.clone(),
         ));
 
         let setting_service: Arc<dyn SettingService> = Arc::new(SettingServiceImpl::new(

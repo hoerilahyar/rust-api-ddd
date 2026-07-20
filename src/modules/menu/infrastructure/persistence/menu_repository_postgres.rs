@@ -199,38 +199,34 @@ impl MenuRepository for MenuRepositoryPg {
         Ok(())
     }
 
-    async fn assign_permission(&self, menu_id: i32, permission_id: i32) -> Result<(), AppError> {
-        sqlx::query(
-            r#"
-            INSERT INTO menu_permissions (menu_id, permission_id)
-            VALUES ($1, $2)
-            ON CONFLICT (menu_id, permission_id) DO NOTHING
-            "#,
-        )
-        .bind(menu_id)
-        .bind(permission_id)
-        .execute(&self.pool)
-        .await?;
+    async fn sync_permissions(&self, menu_id: i32, permission_ids: &[i32]) -> Result<(), AppError> {
+        let mut tx = self.pool.begin().await?;
 
-        Ok(())
-    }
-
-    async fn revoke_permission(&self, menu_id: i32, permission_id: i32) -> Result<(), AppError> {
-        sqlx::query("DELETE FROM menu_permissions WHERE menu_id = $1 AND permission_id = $2")
+        // Drop everything currently assigned that isn't in the desired
+        // list. When `permission_ids` is empty, `<> ALL(...)` is
+        // vacuously true for every row, so this correctly revokes all
+        // permissions from the menu.
+        sqlx::query("DELETE FROM menu_permissions WHERE menu_id = $1 AND permission_id <> ALL($2)")
             .bind(menu_id)
-            .bind(permission_id)
-            .execute(&self.pool)
+            .bind(permission_ids)
+            .execute(&mut *tx)
             .await?;
 
+        if !permission_ids.is_empty() {
+            sqlx::query(
+                r#"
+                INSERT INTO menu_permissions (menu_id, permission_id)
+                SELECT $1, unnest($2::int4[])
+                ON CONFLICT (menu_id, permission_id) DO NOTHING
+                "#,
+            )
+            .bind(menu_id)
+            .bind(permission_ids)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
         Ok(())
-    }
-
-    async fn find_permission_by_name(&self, name: &str) -> Result<Option<(i32, String)>, AppError> {
-        let row = sqlx::query("SELECT id, name FROM permissions WHERE name = $1")
-            .bind(name)
-            .fetch_optional(&self.pool)
-            .await?;
-
-        Ok(row.map(|r| (r.get("id"), r.get("name"))))
     }
 }

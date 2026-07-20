@@ -9,7 +9,7 @@ use crate::{
     modules::{
         auth::domain::Claims,
         role::application::{
-            AssignPermissionRequest, CreateRoleRequest, RoleResponse, UpdateRoleRequest,
+            CreateRoleRequest, RoleResponse, SyncRolePermissionsRequest, UpdateRoleRequest,
         },
     },
     shared::{
@@ -80,32 +80,18 @@ pub async fn delete_role(
     Ok(ApiResponse::message("role deleted"))
 }
 
-pub async fn assign_permission(
+pub async fn sync_permissions(
     State(state): State<AppState>,
     Extension(claims): Extension<Claims>,
     Path(id): Path<i32>,
-    ValidatedJson(payload): ValidatedJson<AssignPermissionRequest>,
+    ValidatedJson(payload): ValidatedJson<SyncRolePermissionsRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     ensure_permission(&claims, "role.manage")?;
 
     state
         .role_service
-        .assign_permission(id, &payload.permission)
+        .sync_permissions(id, &payload.permission_ids)
         .await?;
 
-    Ok(ApiResponse::message("permission assigned"))
-}
-
-pub async fn revoke_permission(
-    State(state): State<AppState>,
-    Extension(claims): Extension<Claims>,
-    Path((id, permission_id)): Path<(i32, String)>,
-) -> Result<impl IntoResponse, AppError> {
-    ensure_permission(&claims, "role.manage")?;
-
-    state
-        .role_service
-        .revoke_permission(id, &permission_id)
-        .await?;
-    Ok(ApiResponse::message("role revoked"))
+    Ok(ApiResponse::message("permissions synced"))
 }

@@ -49,6 +49,19 @@ impl PermissionRepository for PermissionRepositoryPg {
         Ok(row.map(|r| Self::map_row(&r)))
     }
 
+    async fn find_many_by_ids(&self, ids: &[i32]) -> Result<Vec<Permission>, AppError> {
+        if ids.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let rows = sqlx::query("SELECT * FROM permissions WHERE id = ANY($1)")
+            .bind(ids)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows.iter().map(Self::map_row).collect())
+    }
+
     async fn list(
         &self,
         pagination: &PaginationParams,

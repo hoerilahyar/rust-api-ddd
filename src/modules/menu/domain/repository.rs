@@ -45,7 +45,8 @@ pub trait MenuRepository: Send + Sync {
     /// leaving orphaned children pointing at a deleted parent.
     async fn delete(&self, id: i32) -> Result<(), AppError>;
 
-    async fn assign_permission(&self, menu_id: i32, permission_id: i32) -> Result<(), AppError>;
-    async fn revoke_permission(&self, menu_id: i32, permission_id: i32) -> Result<(), AppError>;
-    async fn find_permission_by_name(&self, name: &str) -> Result<Option<(i32, String)>, AppError>;
+    /// Atomically reconciles `menu_permissions` for `menu_id` down to
+    /// exactly `permission_ids` (inserts missing rows, deletes rows not in
+    /// the list) inside a single DB transaction.
+    async fn sync_permissions(&self, menu_id: i32, permission_ids: &[i32]) -> Result<(), AppError>;
 }
