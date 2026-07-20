@@ -9,7 +9,9 @@ use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::masters::application::{
     CreateMasterGroupRequest, MasterGroupService, UpdateMasterGroupRequest,
 };
-use crate::modules::masters::domain::{MasterGroup, MasterGroupRepository, Name};
+use crate::modules::masters::domain::{
+    MasterGroup, MasterGroupRepository, MasterItemRepository, Name,
+};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -60,6 +62,9 @@ pub struct MasterGroupServiceImpl {
     audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn MasterGroupRepository>,
     cache: Arc<RedisCacheRepository>,
+    /// Used to cascade a group's soft-delete to its items -- see `delete`
+    /// below.
+    item_repo: Arc<dyn MasterItemRepository>,
 }
 
 impl MasterGroupServiceImpl {
@@ -67,8 +72,14 @@ impl MasterGroupServiceImpl {
         audit: Arc<dyn AuditTrailRecorder>,
         repo: Arc<dyn MasterGroupRepository>,
         cache: Arc<RedisCacheRepository>,
+        item_repo: Arc<dyn MasterItemRepository>,
     ) -> Self {
-        Self { audit, repo, cache }
+        Self {
+            audit,
+            repo,
+            cache,
+            item_repo,
+        }
     }
 }
 
@@ -183,6 +194,11 @@ impl MasterGroupService for MasterGroupServiceImpl {
             .ok_or_else(|| AppError::NotFound("master group not found".to_string()))?;
 
         self.repo.delete(id).await?;
+        // Cascade: without this, the group disappears from `/masters` but
+        // its items keep showing up individually via `/master-items` and
+        // `/master-items/:id`, orphaned under a group that no longer
+        // exists from the caller's point of view.
+        self.item_repo.delete_by_group(id).await?;
 
         spawn_audit_log(
             self.audit.clone(),

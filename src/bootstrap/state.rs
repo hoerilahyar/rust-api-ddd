@@ -207,14 +207,16 @@ impl AppState {
         let master_group_service: Arc<dyn MasterGroupService> =
             Arc::new(MasterGroupServiceImpl::new(
                 audit_trail_log_repo.clone(),
-                master_group_repo,
+                master_group_repo.clone(),
                 cache.clone(),
+                master_item_repo.clone(),
             ));
 
         let master_item_service: Arc<dyn MasterItemService> = Arc::new(MasterItemServiceImpl::new(
             audit_trail_log_repo.clone(),
             master_item_repo,
             cache.clone(),
+            master_group_repo,
         ));
 
         Self {

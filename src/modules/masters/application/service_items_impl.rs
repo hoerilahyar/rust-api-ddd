@@ -9,7 +9,9 @@ use crate::modules::log_audit_trails::domain::entity::AuditTrailLog;
 use crate::modules::masters::application::{
     CreateMasterItemRequest, MasterItemService, UpdateMasterItemRequest,
 };
-use crate::modules::masters::domain::{ItemName, MasterItem, MasterItemRepository};
+use crate::modules::masters::domain::{
+    ItemName, MasterGroupRepository, MasterItem, MasterItemRepository,
+};
 use crate::shared::cache::{CacheRepository, RedisCacheRepository};
 use crate::shared::context::current_request_context;
 use crate::shared::contracts::AuditTrailRecorder;
@@ -56,10 +58,25 @@ fn cache_key(id: i64) -> String {
     format!("master_item:id:{id}")
 }
 
+/// Mirrors `service_group_impl::cache_key` so item mutations can bust the
+/// parent group's cached response (which embeds the full items list) --
+/// see the doc comment on `invalidate_group_cache` below for why this
+/// matters.
+fn group_cache_key(group_id: i64) -> String {
+    format!("master_group:id:{group_id}")
+}
+
 pub struct MasterItemServiceImpl {
     audit: Arc<dyn AuditTrailRecorder>,
     repo: Arc<dyn MasterItemRepository>,
     cache: Arc<RedisCacheRepository>,
+    /// Used to validate a `group_id` exists (and isn't soft-deleted) before
+    /// an item is created under it, so a bad/stale group id surfaces as a
+    /// clean 404 instead of either an FK violation or, worse, silently
+    /// succeeding and orphaning the item under a group that will never
+    /// list it -- `MasterGroupRepository::find_by_id` already excludes
+    /// soft-deleted rows.
+    group_repo: Arc<dyn MasterGroupRepository>,
 }
 
 impl MasterItemServiceImpl {
@@ -67,8 +84,24 @@ impl MasterItemServiceImpl {
         audit: Arc<dyn AuditTrailRecorder>,
         repo: Arc<dyn MasterItemRepository>,
         cache: Arc<RedisCacheRepository>,
+        group_repo: Arc<dyn MasterGroupRepository>,
     ) -> Self {
-        Self { audit, repo, cache }
+        Self {
+            audit,
+            repo,
+            cache,
+            group_repo,
+        }
+    }
+
+    /// `MasterGroupServiceImpl::get_by_id` caches the group's full response
+    /// -- including its embedded `items` list -- for `CACHE_TTL`. Every
+    /// item mutation here changes what that cached response should contain,
+    /// so it must be busted here too; otherwise the group's item list stays
+    /// stale for up to 5 minutes after an item is created, edited, or
+    /// deleted, even though `master_item:id:*` itself is fresh.
+    async fn invalidate_group_cache(&self, group_id: i64) -> Result<(), AppError> {
+        self.cache.delete(&group_cache_key(group_id)).await
     }
 }
 
@@ -104,6 +137,11 @@ impl MasterItemService for MasterItemServiceImpl {
     ) -> Result<MasterItem, AppError> {
         ItemName::parse(&req.name)?;
 
+        self.group_repo
+            .find_by_id(req.group_id)
+            .await?
+            .ok_or_else(|| AppError::NotFound("master group not found".to_string()))?;
+
         if self
             .repo
             .find_by_group_and_code(req.group_id, &req.code)
@@ -135,6 +173,7 @@ impl MasterItemService for MasterItemServiceImpl {
             None,
             Some(&item),
         );
+        self.invalidate_group_cache(item.group_id).await?;
         Ok(item)
     }
 
@@ -187,6 +226,7 @@ impl MasterItemService for MasterItemServiceImpl {
         );
 
         self.cache.delete(&cache_key(id)).await?;
+        self.invalidate_group_cache(item.group_id).await?;
         Ok(item)
     }
 
@@ -209,6 +249,7 @@ impl MasterItemService for MasterItemServiceImpl {
         );
 
         self.cache.delete(&cache_key(id)).await?;
+        self.invalidate_group_cache(existing.group_id).await?;
         Ok(())
     }
 }

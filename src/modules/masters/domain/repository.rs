@@ -77,4 +77,10 @@ pub trait MasterItemRepository: Send + Sync {
     ) -> Result<MasterItem, AppError>;
 
     async fn delete(&self, id: i64) -> Result<(), AppError>;
+
+    /// Cascades a group's soft-delete to every item still under it, so a
+    /// deleted group can't leave orphaned items that remain individually
+    /// visible via `GET /master-items` / `GET /master-items/:id` even
+    /// though the group that owned them is gone.
+    async fn delete_by_group(&self, group_id: i64) -> Result<(), AppError>;
 }

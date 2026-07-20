@@ -186,4 +186,14 @@ impl MasterItemRepository for MasterItemRepositoryPg {
         .await?;
         Ok(())
     }
+
+    async fn delete_by_group(&self, group_id: i64) -> Result<(), AppError> {
+        sqlx::query(
+            "UPDATE master_items SET deleted_at = NOW() WHERE group_id = $1 AND deleted_at IS NULL",
+        )
+        .bind(group_id)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
 }
