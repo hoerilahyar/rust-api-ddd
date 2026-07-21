@@ -70,8 +70,12 @@ impl ActivityLogRepository for ActivityLogRepositoryPg {
             FROM log_activities
             WHERE
                 ($1 = ''
+                    OR user_id::TEXT ILIKE $2
                     OR module ILIKE $2
                     OR path ILIKE $2
+                    OR resource_type ILIKE $2
+                    OR resource_id ILIKE $2
+                    OR method ILIKE $2
                     OR description ILIKE $2)
                 AND ($3::INT IS NULL OR user_id = $3)
                 AND ($4::VARCHAR IS NULL OR activity = $4)
@@ -98,8 +102,12 @@ impl ActivityLogRepository for ActivityLogRepositoryPg {
             FROM log_activities
             WHERE
                 ($1 = ''
+                    OR user_id::TEXT ILIKE $2
                     OR module ILIKE $2
                     OR path ILIKE $2
+                    OR resource_type ILIKE $2
+                    OR resource_id ILIKE $2
+                    OR method ILIKE $2
                     OR description ILIKE $2)
                 AND ($3::INT IS NULL OR user_id = $3)
                 AND ($4::VARCHAR IS NULL OR activity = $4)

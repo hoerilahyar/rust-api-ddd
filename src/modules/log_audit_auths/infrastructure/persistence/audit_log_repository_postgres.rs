@@ -48,7 +48,8 @@ impl AuditAuthLogRepository for AuditAuthLogRepositoryPg {
         let rows = sqlx::query(
             r#"
             SELECT * FROM log_audit_auths
-            WHERE ($1 = '' OR email_attempted ILIKE $2 OR ip_address ILIKE $2)
+            WHERE ($1 = '' OR email_attempted ILIKE $2 OR ip_address ILIKE $2 OR user_agent ILIKE $2 
+                OR status ILIKE $2)
               AND ($3::INT IS NULL OR user_id = $3)
               AND ($4::VARCHAR IS NULL OR status = $4)
               AND ($5::TIMESTAMPTZ IS NULL OR created_at >= $5)
@@ -71,7 +72,8 @@ impl AuditAuthLogRepository for AuditAuthLogRepositoryPg {
         let total: i64 = sqlx::query(
             r#"
             SELECT COUNT(*) AS total FROM log_audit_auths
-            WHERE ($1 = '' OR email_attempted ILIKE $2 OR ip_address ILIKE $2)
+            WHERE ($1 = '' OR email_attempted ILIKE $2 OR ip_address ILIKE $2 OR user_agent ILIKE $2 
+                OR status ILIKE $2)
               AND ($3::INT IS NULL OR user_id = $3)
               AND ($4::VARCHAR IS NULL OR status = $4)
               AND ($5::TIMESTAMPTZ IS NULL OR created_at >= $5)

@@ -10,8 +10,8 @@ use crate::shared::middleware::{activity_log_middleware, require_auth};
 /// inside each handler further restricts access to `audit.read`.
 pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
-        .route("/audit-auth/logs", get(handler::list_audit_auth_logs))
-        .route("/audit-auth/logs/:id", get(handler::get_audit_auth_log))
+        .route("/audit-auth", get(handler::list_audit_auth_logs))
+        .route("/audit-auth/:id", get(handler::get_audit_auth_log))
         .route_layer(axum::middleware::from_fn_with_state(
             state.clone(),
             activity_log_middleware,
