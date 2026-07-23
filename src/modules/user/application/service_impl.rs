@@ -172,6 +172,10 @@ impl UserService for UserServiceImpl {
         self.repo.list(pagination).await
     }
 
+    async fn list_last_logins(&self, limit: i64) -> Result<Vec<User>, AppError> {
+        self.repo.list_last_logins(limit).await
+    }
+
     async fn create(&self, req: CreateUserRequest, actor_id: i32) -> Result<User, AppError> {
         Email::parse(&req.email)?;
         Username::parse(&req.username)?;

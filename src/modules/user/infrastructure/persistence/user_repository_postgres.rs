@@ -223,6 +223,28 @@ impl UserRepository for UserRepositoryPg {
         Ok((users, total))
     }
 
+    async fn list_last_logins(&self, limit: i64) -> Result<Vec<User>, AppError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT * FROM users
+            WHERE deleted_at IS NULL
+              AND last_login_at IS NOT NULL
+            ORDER BY last_login_at DESC
+            LIMIT $1
+            "#,
+        )
+        .bind(limit)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut users = Vec::with_capacity(rows.len());
+        for row in rows {
+            users.push(self.attach_roles(Self::map_row(&row)).await?);
+        }
+
+        Ok(users)
+    }
+
     async fn create(
         &self,
         name: &str,

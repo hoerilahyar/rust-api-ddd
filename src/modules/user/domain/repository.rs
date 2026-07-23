@@ -14,6 +14,11 @@ pub trait UserRepository: Send + Sync {
 
     async fn list(&self, pagination: &PaginationParams) -> Result<(Vec<User>, i64), AppError>;
 
+    /// Returns the most recently logged-in users, ordered by
+    /// `last_login_at` descending. Users who have never logged in
+    /// (`last_login_at IS NULL`) are excluded.
+    async fn list_last_logins(&self, limit: i64) -> Result<Vec<User>, AppError>;
+
     async fn create(
         &self,
         name: &str,

@@ -81,3 +81,28 @@ impl From<User> for UserResponse {
         }
     }
 }
+
+/// Lightweight projection used by `GET /users/last-logins`. Leaves out
+/// permissions/timestamps that the widget doesn't need.
+#[derive(Debug, Serialize)]
+pub struct LastLoginResponse {
+    pub id: i32,
+    pub name: String,
+    pub username: String,
+    pub email: String,
+    pub roles: Vec<String>,
+    pub last_login_at: Option<DateTime<Utc>>,
+}
+
+impl From<User> for LastLoginResponse {
+    fn from(u: User) -> Self {
+        Self {
+            id: u.id,
+            name: u.name,
+            username: u.username,
+            email: u.email,
+            roles: u.roles,
+            last_login_at: u.last_login_at,
+        }
+    }
+}

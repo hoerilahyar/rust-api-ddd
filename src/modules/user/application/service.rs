@@ -9,6 +9,8 @@ use crate::shared::errors::AppError;
 pub trait UserService: Send + Sync {
     async fn get_by_id(&self, id: i32) -> Result<User, AppError>;
     async fn list(&self, pagination: &PaginationParams) -> Result<(Vec<User>, i64), AppError>;
+    /// Most recently logged-in users, ordered by `last_login_at` descending.
+    async fn list_last_logins(&self, limit: i64) -> Result<Vec<User>, AppError>;
     async fn create(&self, req: CreateUserRequest, actor_id: i32) -> Result<User, AppError>;
     async fn update(
         &self,

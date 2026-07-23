@@ -1,10 +1,12 @@
 use axum::extract::{Extension, Path, Query, State};
 use axum::response::IntoResponse;
+use serde::Deserialize;
 
 use crate::bootstrap::state::AppState;
 use crate::modules::auth::domain::value_object::Claims;
 use crate::modules::user::application::dto::{
-    AssignRoleRequest, ChangePasswordRequest, CreateUserRequest, UpdateUserRequest, UserResponse,
+    AssignRoleRequest, ChangePasswordRequest, CreateUserRequest, LastLoginResponse,
+    UpdateUserRequest, UserResponse,
 };
 use crate::shared::domain::PaginationParams;
 use crate::shared::errors::AppError;
@@ -32,6 +34,34 @@ pub async fn list_users(
     let data: Vec<UserResponse> = users.into_iter().map(UserResponse::from).collect();
 
     Ok(PaginatedResponse::new("ok", data, page, limit, total))
+}
+
+const DEFAULT_LAST_LOGINS_LIMIT: i64 = 10;
+const MAX_LAST_LOGINS_LIMIT: i64 = 50;
+
+#[derive(Debug, Deserialize)]
+pub struct LastLoginsQuery {
+    pub limit: Option<i64>,
+}
+
+/// `GET /users/last-logins?limit=10` — most recently logged-in users,
+/// newest first. Used by the dashboard "recent logins" widget.
+pub async fn list_last_logins(
+    State(state): State<AppState>,
+    Extension(claims): Extension<Claims>,
+    Query(query): Query<LastLoginsQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    ensure_permission(&claims, "user.manage")?;
+
+    let limit = query
+        .limit
+        .unwrap_or(DEFAULT_LAST_LOGINS_LIMIT)
+        .clamp(1, MAX_LAST_LOGINS_LIMIT);
+
+    let users = state.user_service.list_last_logins(limit).await?;
+    let data: Vec<LastLoginResponse> = users.into_iter().map(LastLoginResponse::from).collect();
+
+    Ok(ApiResponse::new("ok", data))
 }
 
 pub async fn get_user(

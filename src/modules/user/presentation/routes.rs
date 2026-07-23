@@ -13,6 +13,7 @@ pub fn routes(state: AppState) -> Router<AppState> {
         .route("/me/password", put(handler::change_my_password))
         .route("/users", get(handler::list_users))
         .route("/users", post(handler::create_user))
+        .route("/users/last-logins", get(handler::list_last_logins))
         .route("/users/:id", get(handler::get_user))
         .route("/users/:id", put(handler::update_user))
         .route("/users/:id", delete(handler::delete_user))
